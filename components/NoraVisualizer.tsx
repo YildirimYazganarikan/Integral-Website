@@ -2,203 +2,229 @@ import React, { useEffect, useRef } from 'react';
 import { AgentMode, AudioLevels, VisualizerProfile } from '../types';
 
 interface NoraVisualizerProps {
-  mode: AgentMode;
-  getVolumeLevels: () => AudioLevels;
-  profile: VisualizerProfile;
-  isDarkMode: boolean;
+    mode: AgentMode;
+    getVolumeLevels: () => AudioLevels;
+    profile: VisualizerProfile;
+    isDarkMode: boolean;
 }
 
 // Internal Particle Structure
 interface Particle {
-  x: number;
-  y: number;
-  baseX: number;
-  baseY: number;
-  angle: number;
-  distance: number;
-  size: number;
-  opacity: number;
-  // 3D properties
-  theta?: number;
-  phi?: number;
+    x: number;
+    y: number;
+    baseX: number;
+    baseY: number;
+    angle: number;
+    distance: number;
+    size: number;
+    opacity: number;
+    // 3D properties
+    theta?: number;
+    phi?: number;
 }
 
 export const NoraVisualizer: React.FC<NoraVisualizerProps> = ({ mode, getVolumeLevels, profile, isDarkMode }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const requestRef = useRef<number>(0);
-  const timeRef = useRef<number>(0);
-  const intensityRef = useRef<number>(0);
-  const particlesRef = useRef<Particle[]>([]);
-  
-  // Initialize particles when theme/density changes
-  useEffect(() => {
-    // Just init the persistent properties (angle, phase, 3D coords).
-    const particleCount = Math.floor(50 + profile.settings.density * 250);
-    
-    const newParticles: Particle[] = [];
-    for (let i = 0; i < particleCount; i++) {
-        const angle = (Math.PI * 2 * i) / particleCount;
-        // Radius will be calculated dynamically in draw
-        const theta = Math.random() * 2 * Math.PI; 
-        const phi = Math.acos(2 * Math.random() - 1); 
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const requestRef = useRef<number>(0);
+    const timeRef = useRef<number>(0);
+    const intensityRef = useRef<number>(0);
+    const particlesRef = useRef<Particle[]>([]);
 
-        newParticles.push({
-          x: 0, y: 0, baseX: 0, baseY: 0, // Placeholder
-          size: Math.random() * 2 + 1,
-          angle: angle,
-          distance: 100, // Placeholder
-          opacity: Math.random() * 0.5 + 0.5,
-          theta,
-          phi
-        });
-    }
-    particlesRef.current = newParticles;
-  }, [profile.type, profile.settings.density, profile.settings.radius]);
+    // Initialize particles when theme/density changes
+    useEffect(() => {
+        // Just init the persistent properties (angle, phase, 3D coords).
+        const particleCount = Math.floor(50 + profile.settings.density * 250);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+        const newParticles: Particle[] = [];
+        for (let i = 0; i < particleCount; i++) {
+            const angle = (Math.PI * 2 * i) / particleCount;
+            // Radius will be calculated dynamically in draw
+            const theta = Math.random() * 2 * Math.PI;
+            const phi = Math.acos(2 * Math.random() - 1);
 
-    const render = () => {
-      const { input, output, inputFrequencies, outputFrequencies } = getVolumeLevels();
-      timeRef.current += 0.02;
+            newParticles.push({
+                x: 0, y: 0, baseX: 0, baseY: 0, // Placeholder
+                size: Math.random() * 2 + 1,
+                angle: angle,
+                distance: 100, // Placeholder
+                opacity: Math.random() * 0.5 + 0.5,
+                theta,
+                phi
+            });
+        }
+        particlesRef.current = newParticles;
+    }, [profile.type, profile.settings.density, profile.settings.radius]);
 
-      // --- Resize Logic ---
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const displayWidth = Math.floor(rect.width * dpr);
-      const displayHeight = Math.floor(rect.height * dpr);
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
 
-      if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
-          canvas.width = displayWidth;
-          canvas.height = displayHeight;
-          ctx.scale(dpr, dpr);
-      }
+        const render = () => {
+            const { input, output, inputFrequencies, outputFrequencies } = getVolumeLevels();
+            timeRef.current += 0.02;
 
-      const width = rect.width;
-      const height = rect.height;
+            // --- Resize Logic ---
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            const displayWidth = Math.floor(rect.width * dpr);
+            const displayHeight = Math.floor(rect.height * dpr);
 
-      // --- Intensity Logic ---
-      let targetIntensity = 0;
-      if (mode === AgentMode.LISTENING) {
-          targetIntensity = Math.max(0, (input - 0.05) * 1.5); 
-      } else if (mode === AgentMode.SPEAKING) {
-          targetIntensity = output * 2.5;
-      } else if (mode === AgentMode.SEARCHING) {
-          targetIntensity = 0.15 + (Math.sin(timeRef.current * 5) * 0.05);
-      }
+            if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+                canvas.width = displayWidth;
+                canvas.height = displayHeight;
+                ctx.scale(dpr, dpr);
+            }
 
-      intensityRef.current += (targetIntensity - intensityRef.current) * 0.15;
-      const intensity = Math.max(0, intensityRef.current);
-      
-      // Determine active frequency data
-      let freqData: Uint8Array | undefined;
-      if (mode === AgentMode.SPEAKING) {
-          freqData = outputFrequencies;
-      } else if (mode === AgentMode.LISTENING) {
-          freqData = inputFrequencies;
-      }
+            const width = rect.width;
+            const height = rect.height;
 
-      // Clear
-      ctx.clearRect(0, 0, width, height);
-      
-      const primaryColor = isDarkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.9)';
-      const secondaryColor = isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)';
-      const accentRGB = isDarkMode ? '255, 255, 255' : '0, 0, 0';
+            // --- Intensity Logic ---
+            let targetIntensity = 0;
+            if (mode === AgentMode.LISTENING) {
+                targetIntensity = Math.max(0, (input - 0.05) * 1.5);
+            } else if (mode === AgentMode.SPEAKING) {
+                targetIntensity = output * 2.5;
+            } else if (mode === AgentMode.SEARCHING) {
+                targetIntensity = 0.15 + (Math.sin(timeRef.current * 5) * 0.05);
+            }
 
-      if (profile.type === 'PARTICLE_CIRCLE') {
-          drawParticleCircle(ctx, width, height, timeRef.current, intensity, particlesRef.current, profile.settings, mode, primaryColor, freqData);
-      } 
-      else if (profile.type === 'STRAIGHT_LINE') {
-          drawStraightLine(ctx, width, height, timeRef.current, intensity, profile.settings, mode, primaryColor, secondaryColor);
-      }
-      else if (profile.type === 'SIMPLE_CIRCLE') {
-          drawSimpleCircle(ctx, width, height, timeRef.current, intensity, profile.settings, mode, primaryColor, secondaryColor, isDarkMode);
-      }
-      else if (profile.type === 'CIRCLE_RADIUS') {
-          drawCircleRadius(ctx, width, height, timeRef.current, intensity, profile.settings, mode, accentRGB);
-      }
-      else if (profile.type === 'SPHERICAL_PARTICLE') {
-          drawSphericalParticle(ctx, width, height, timeRef.current, intensity, particlesRef.current, profile.settings, mode, primaryColor, secondaryColor);
-      }
+            intensityRef.current += (targetIntensity - intensityRef.current) * 0.15;
+            const intensity = Math.max(0, intensityRef.current);
 
-      requestRef.current = requestAnimationFrame(render);
-    };
+            // Determine active frequency data
+            let freqData: Uint8Array | undefined;
+            if (mode === AgentMode.SPEAKING) {
+                freqData = outputFrequencies;
+            } else if (mode === AgentMode.LISTENING) {
+                freqData = inputFrequencies;
+            }
 
-    render();
+            // Clear
+            ctx.clearRect(0, 0, width, height);
 
-    return () => {
-      cancelAnimationFrame(requestRef.current);
-    };
-  }, [mode, getVolumeLevels, profile, isDarkMode]);
+            const primaryColor = isDarkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.9)';
+            const secondaryColor = isDarkMode ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)';
+            const accentRGB = isDarkMode ? '255, 255, 255' : '0, 0, 0';
 
-  return (
-    <div className="w-full h-full">
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full block"
-      />
-    </div>
-  );
+            if (profile.type === 'PARTICLE_CIRCLE') {
+                drawParticleCircle(ctx, width, height, timeRef.current, intensity, particlesRef.current, profile.settings, mode, primaryColor, freqData);
+            }
+            else if (profile.type === 'STRAIGHT_LINE') {
+                drawStraightLine(ctx, width, height, timeRef.current, intensity, profile.settings, mode, primaryColor, secondaryColor);
+            }
+            else if (profile.type === 'SIMPLE_CIRCLE') {
+                drawSimpleCircle(ctx, width, height, timeRef.current, intensity, profile.settings, mode, primaryColor, secondaryColor, isDarkMode);
+            }
+            else if (profile.type === 'CIRCLE_RADIUS') {
+                drawCircleRadius(ctx, width, height, timeRef.current, intensity, profile.settings, mode, accentRGB);
+            }
+            else if (profile.type === 'SPHERICAL_PARTICLE') {
+                drawSphericalParticle(ctx, width, height, timeRef.current, intensity, particlesRef.current, profile.settings, mode, primaryColor, secondaryColor);
+            }
+
+            requestRef.current = requestAnimationFrame(render);
+        };
+
+        render();
+
+        return () => {
+            cancelAnimationFrame(requestRef.current);
+        };
+    }, [mode, getVolumeLevels, profile, isDarkMode]);
+
+    return (
+        <div className="w-full h-full">
+            <canvas
+                ref={canvasRef}
+                className="w-full h-full block"
+            />
+        </div>
+    );
 };
 
 // --- Drawing Implementations (Coordinates relative to passed width/height) ---
 
 function drawParticleCircle(
-    ctx: CanvasRenderingContext2D, w: number, h: number, time: number, intensity: number, 
+    ctx: CanvasRenderingContext2D, w: number, h: number, time: number, intensity: number,
     particles: Particle[], settings: any, mode: AgentMode, color: string, freqData?: Uint8Array
 ) {
     const centerX = w / 2;
     const centerY = h / 2;
     const baseRadius = Math.min(w, h) * (settings.radius / 800);
-    
+
     const freq = settings.breathingFrequency || 2;
     const amount = settings.breathingAmount || 5;
     const breathe = Math.sin(time * freq) * amount;
 
     const radiusExpansion = intensity * 40 * settings.radiusSensitivity;
-    const displacementScale = intensity * 20 * settings.displacementSensitivity;
 
     ctx.fillStyle = color;
 
-    particles.forEach(p => {
-        const noise = Math.sin(p.angle * 10 + time * 5) * Math.cos(p.angle * 5 - time * 2);
-        
+    // Precompute average frequency for smooth overall expansion
+    let avgFreq = 0;
+    if (freqData && freqData.length > 0) {
+        let sum = 0;
+        for (let i = 0; i < freqData.length; i++) {
+            sum += freqData[i];
+        }
+        avgFreq = sum / freqData.length / 255;
+    }
+
+    particles.forEach((p, idx) => {
+        // Smooth organic noise - slower, gentler waves that flow around the entire circle
+        const slowTime = time * 0.5; // Much slower time progression
+        const wave1 = Math.sin(p.angle * 3 + slowTime) * 0.5;
+        const wave2 = Math.cos(p.angle * 2 - slowTime * 0.7) * 0.3;
+        const wave3 = Math.sin(p.angle * 5 + slowTime * 1.3) * 0.2;
+        const organicNoise = (wave1 + wave2 + wave3) * settings.displacementSensitivity * 8;
+
+        // Even spectral displacement around the entire circle
         let spectralDisplacement = 0;
         if (freqData && freqData.length > 0) {
-            // Symmetrical mapping: 0..PI maps to 0..len, PI..2PI maps to len..0
-            let norm = p.angle / (Math.PI * 2); // 0..1
-            if (norm > 0.5) norm = 1 - norm; // 0..0.5
-            norm = norm * 2; // 0..1
-            
-            const index = Math.floor(norm * (freqData.length - 1));
-            let val = freqData[index] || 0;
-            
-            // Noise Gate: Filter out low-level noise to prevent glitchy vibrations
-            if (val < 40) val = 0;
+            // Map angle to frequency bin evenly across the full circle
+            // Use multiple frequency samples and blend for smoother result
+            const angleNorm = p.angle / (Math.PI * 2); // 0..1
 
-            // Push outwards based on frequency volume
-            spectralDisplacement = (val / 255) * 80 * settings.displacementSensitivity;
+            // Sample from frequency data with wrapping
+            const freqLen = freqData.length;
+            const primaryIdx = Math.floor(angleNorm * freqLen) % freqLen;
+            const nextIdx = (primaryIdx + 1) % freqLen;
+            const blend = (angleNorm * freqLen) % 1;
+
+            // Blend between adjacent frequencies for smoothness
+            const val1 = freqData[primaryIdx] || 0;
+            const val2 = freqData[nextIdx] || 0;
+            let val = val1 * (1 - blend) + val2 * blend;
+
+            // Soft noise gate with gradual falloff instead of hard cutoff
+            val = Math.max(0, val - 30) * 1.2;
+
+            // Smooth displacement based on frequency
+            spectralDisplacement = (val / 255) * 50 * settings.displacementSensitivity;
         }
 
+        // Particle size influenced by audio intensity
         let size = p.size;
-        if (intensity > 0.1) size += (intensity * 2 * settings.displacementSensitivity);
-        size = Math.max(0.5, size);
+        // Base size increase from intensity
+        const sizeBoost = intensity * 3 * settings.displacementSensitivity;
+        // Additional pulsing based on average frequency
+        const sizePulse = avgFreq * 2;
+        size = Math.max(0.5, size + sizeBoost + sizePulse);
 
-        // Include spectralDisplacement in radius calc
-        const dynamicR = baseRadius + breathe + radiusExpansion + spectralDisplacement + (noise * displacementScale);
-        
+        // Combine all displacement components smoothly
+        const dynamicR = baseRadius + breathe + radiusExpansion + spectralDisplacement + organicNoise;
+
         let x = centerX + Math.cos(p.angle) * dynamicR;
         let y = centerY + Math.sin(p.angle) * dynamicR;
 
         if (mode === AgentMode.SEARCHING) {
-            const orbitSpeed = time * 4;
-            const orbitX = centerX + Math.cos(p.angle + orbitSpeed) * (baseRadius + Math.sin(time * 5)*10);
-            const orbitY = centerY + Math.sin(p.angle + orbitSpeed) * (baseRadius + Math.sin(time * 5)*10);
-            x = orbitX;
-            y = orbitY;
+            const orbitSpeed = time * 2; // Slower orbit for smoother searching animation
+            const pulse = Math.sin(time * 3) * 8;
+            x = centerX + Math.cos(p.angle + orbitSpeed) * (baseRadius + pulse);
+            y = centerY + Math.sin(p.angle + orbitSpeed) * (baseRadius + pulse);
+            size = p.size * 0.8; // Slightly smaller during search
         }
 
         ctx.beginPath();
@@ -210,7 +236,7 @@ function drawParticleCircle(
 }
 
 function drawStraightLine(
-    ctx: CanvasRenderingContext2D, w: number, h: number, time: number, intensity: number, 
+    ctx: CanvasRenderingContext2D, w: number, h: number, time: number, intensity: number,
     settings: any, mode: AgentMode, color: string, secondaryColor: string
 ) {
     ctx.strokeStyle = color;
@@ -227,17 +253,17 @@ function drawStraightLine(
     ctx.beginPath();
     for (let i = 0; i <= points; i++) {
         const x = i * spacing;
-        let offset = Math.sin(i * 0.1 + time) * 5; 
+        let offset = Math.sin(i * 0.1 + time) * 5;
 
         if (intensity > 0.001) {
-             const edgeFactor = Math.sin((i / points) * Math.PI); 
-             const wave1 = Math.sin(i * 0.2 + time * 10);
-             const wave2 = Math.cos(i * 0.5 - time * 8);
-             offset += (wave1 + wave2) * amplitude * edgeFactor;
+            const edgeFactor = Math.sin((i / points) * Math.PI);
+            const wave1 = Math.sin(i * 0.2 + time * 10);
+            const wave2 = Math.cos(i * 0.5 - time * 8);
+            offset += (wave1 + wave2) * amplitude * edgeFactor;
         }
 
         if (mode === AgentMode.SEARCHING) {
-            const travel = Math.sin(i * 0.2 - time * 10) * 20 * Math.sin((i/points) * Math.PI);
+            const travel = Math.sin(i * 0.2 - time * 10) * 20 * Math.sin((i / points) * Math.PI);
             offset = travel;
         }
 
@@ -261,19 +287,19 @@ function drawStraightLine(
 }
 
 function drawSimpleCircle(
-    ctx: CanvasRenderingContext2D, w: number, h: number, time: number, intensity: number, 
+    ctx: CanvasRenderingContext2D, w: number, h: number, time: number, intensity: number,
     settings: any, mode: AgentMode, color: string, secondaryColor: string, isDark: boolean
 ) {
     const centerX = w / 2;
     const centerY = h / 2;
     const baseR = Math.min(w, h) * (settings.radius / 800);
-    
+
     const freq = settings.breathingFrequency || 1.5;
     const amount = settings.breathingAmount || 5;
     const breathe = Math.sin(time * freq) * amount;
-    
+
     const radiusReaction = intensity * 60 * settings.radiusSensitivity;
-    
+
     let r = baseR + breathe + radiusReaction;
 
     if (mode === AgentMode.SEARCHING) {
@@ -287,7 +313,7 @@ function drawSimpleCircle(
         ctx.stroke();
     }
 
-    ctx.fillStyle = isDark ? '#000000' : '#ffffff'; 
+    ctx.fillStyle = isDark ? '#000000' : '#ffffff';
     ctx.strokeStyle = color;
     ctx.lineWidth = settings.thickness;
 
@@ -306,12 +332,12 @@ function drawSimpleCircle(
 }
 
 function drawCircleRadius(
-    ctx: CanvasRenderingContext2D, w: number, h: number, time: number, intensity: number, 
+    ctx: CanvasRenderingContext2D, w: number, h: number, time: number, intensity: number,
     settings: any, mode: AgentMode, accentRGB: string
 ) {
     const centerX = w / 2;
     const centerY = h / 2;
-    
+
     const pulse = intensity * 100 * settings.radiusSensitivity;
     // Scale base radius
     const baseRadius = Math.min(w, h) * (settings.radius / 800) * 3; // Multiplier to match visual weight
@@ -319,56 +345,56 @@ function drawCircleRadius(
     const ringSpacing = 15;
 
     const freq = settings.breathingFrequency || 1;
-    const amount = settings.breathingAmount || 0; 
+    const amount = settings.breathingAmount || 0;
     const breathe = Math.sin(time * freq) * amount;
 
     ctx.save();
     ctx.translate(centerX, centerY);
-    ctx.rotate(time * 0.05); 
+    ctx.rotate(time * 0.05);
     ctx.translate(-centerX, -centerY);
 
     const r = baseRadius + pulse + breathe;
 
     ctx.beginPath();
     ctx.arc(centerX, centerY, Math.max(0, r), 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(${accentRGB}, 0.05)`; 
+    ctx.fillStyle = `rgba(${accentRGB}, 0.05)`;
     ctx.fill();
 
     ctx.lineWidth = settings.thickness;
-    
-    for(let i = 0; i < ringCount; i++) {
-      const speed = mode === AgentMode.SEARCHING ? 10 : 2;
-      const chaos = intensity * 20 * settings.displacementSensitivity;
-      const ringPulse = Math.sin(time * speed - i) * (pulse * 0.2 + chaos);
-      const ringR = r + (i * ringSpacing) + ringPulse;
-      
-      const opacity = (0.6) * (1 - (i / ringCount)); 
-      
-      ctx.beginPath();
-      if (mode === AgentMode.SEARCHING) ctx.setLineDash([10, 20]);
-      else ctx.setLineDash([]);
-      
-      ctx.arc(centerX, centerY, Math.max(0, ringR), 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(${accentRGB}, ${opacity})`;
-      ctx.stroke();
+
+    for (let i = 0; i < ringCount; i++) {
+        const speed = mode === AgentMode.SEARCHING ? 10 : 2;
+        const chaos = intensity * 20 * settings.displacementSensitivity;
+        const ringPulse = Math.sin(time * speed - i) * (pulse * 0.2 + chaos);
+        const ringR = r + (i * ringSpacing) + ringPulse;
+
+        const opacity = (0.6) * (1 - (i / ringCount));
+
+        ctx.beginPath();
+        if (mode === AgentMode.SEARCHING) ctx.setLineDash([10, 20]);
+        else ctx.setLineDash([]);
+
+        ctx.arc(centerX, centerY, Math.max(0, ringR), 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${accentRGB}, ${opacity})`;
+        ctx.stroke();
     }
 
     ctx.restore();
 }
 
 function drawSphericalParticle(
-    ctx: CanvasRenderingContext2D, w: number, h: number, time: number, intensity: number, 
+    ctx: CanvasRenderingContext2D, w: number, h: number, time: number, intensity: number,
     particles: Particle[], settings: any, mode: AgentMode, color: string, secondaryColor: string
 ) {
     const centerX = w / 2;
     const centerY = h / 2;
     const baseRadius = Math.min(w, h) * (settings.radius / 800) * 2;
-    
+
     const rotMult = settings.rotationSpeed !== undefined ? settings.rotationSpeed : 1.0;
 
     let rotSpeedX = 0.5 * rotMult;
     let rotSpeedY = 0.8 * rotMult;
-    
+
     if (mode === AgentMode.SEARCHING) {
         rotSpeedX = 2.0 * rotMult;
         rotSpeedY = 3.0 * rotMult;
@@ -380,7 +406,7 @@ function drawSphericalParticle(
 
     const expansion = intensity * 50 * settings.radiusSensitivity;
     const currentRadius = baseRadius + expansion + breathe;
-    
+
     const jitterAmount = intensity * 10 * settings.displacementSensitivity;
 
     ctx.fillStyle = color;
@@ -403,9 +429,9 @@ function drawSphericalParticle(
         let y2 = y * Math.cos(rotX) - z1 * Math.sin(rotX);
         let z2 = z1 * Math.cos(rotX) + y * Math.sin(rotX);
 
-        const fov = 300; 
+        const fov = 300;
         const scale = fov / (fov + z2);
-        
+
         const x2d = centerX + x1 * scale;
         const y2d = centerY + y2 * scale;
 
@@ -418,12 +444,12 @@ function drawSphericalParticle(
         ctx.fill();
 
         if (mode === AgentMode.SEARCHING && Math.random() > 0.98) {
-             ctx.strokeStyle = secondaryColor;
-             ctx.lineWidth = 0.5;
-             ctx.beginPath();
-             ctx.moveTo(centerX, centerY);
-             ctx.lineTo(x2d, y2d);
-             ctx.stroke();
+            ctx.strokeStyle = secondaryColor;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(x2d, y2d);
+            ctx.stroke();
         }
     });
     ctx.globalAlpha = 1.0;

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLiveAgent } from './hooks/useLiveAgent';
 import { useSupabaseProfiles } from './hooks/useSupabaseProfiles';
+import { saveHtmlFile, saveDefaultTemplate, isFileServerRunning } from './lib/fileServer';
 import { NoraVisualizer } from './components/NoraVisualizer';
 import { AgentMode, VisualizerProfile, ThemeType } from './types';
-import { Mic, MicOff, Settings, Plus, Trash2, Edit2, X, Sun, Moon, Circle, Activity, Aperture, Disc, Globe, Download, Upload, Save, Copy, Key, Loader2, Check, AlertCircle } from 'lucide-react';
+import { Mic, MicOff, Settings, Plus, Trash2, Edit2, X, Sun, Moon, Circle, Activity, Aperture, Disc, Globe, Download, Upload, Save, Copy, Key, Loader2, Check, AlertCircle, FolderOpen } from 'lucide-react';
 
 const DEFAULT_API_KEY = 'AIzaSyCz3XxWf-iWU0VzuawBiBZTiTQ40QGW7pA';
 
@@ -481,12 +482,23 @@ const App: React.FC = () => {
 </html>`;
 
         const blob = new Blob([htmlContent], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${profileToExport.name.replace(/\s+/g, '_')}.html`;
-        a.click();
-        URL.revokeObjectURL(url);
+        const filename = `${profileToExport.name.replace(/\s+/g, '_')}.html`;
+
+        // Try to save to project folder first
+        saveHtmlFile(filename, htmlContent).then(result => {
+            if (result.success) {
+                showNotification('success', `Saved to Saved HTML Files/${filename}`);
+            } else {
+                // Fallback to download
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+                showNotification('success', `Downloaded ${filename}`);
+            }
+        });
     };
 
     const handleImportClick = () => {

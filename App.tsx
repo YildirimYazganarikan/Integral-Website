@@ -9,24 +9,30 @@ const DEFAULT_API_KEY = 'AIzaSyCz3XxWf-iWU0VzuawBiBZTiTQ40QGW7pA';
 const DEFAULT_PROFILES: VisualizerProfile[] = [
     {
         id: 'p1',
-        name: 'Particle Flow',
-        type: 'PARTICLE_CIRCLE',
-        settings: { radius: 100, radiusSensitivity: 1.0, displacementSensitivity: 1.0, sizeSensitivity: 1.0, density: 0.5, thickness: 2, breathingAmount: 5, breathingFrequency: 2 }
-    },
-    {
-        id: 'p2',
-        name: 'Neural Wave',
-        type: 'STRAIGHT_LINE',
-        settings: { radius: 100, radiusSensitivity: 1.0, displacementSensitivity: 1.5, density: 0.8, thickness: 3 }
-    },
-    {
-        id: 'p3',
         name: 'Core Pulse',
         type: 'SIMPLE_CIRCLE',
         settings: { radius: 80, radiusSensitivity: 1.2, displacementSensitivity: 0.5, density: 0, thickness: 2, breathingAmount: 8, breathingFrequency: 1.5 }
     },
     {
+        id: 'p2',
+        name: 'Particle Flow',
+        type: 'PARTICLE_CIRCLE',
+        settings: { radius: 100, radiusSensitivity: 1.0, displacementSensitivity: 1.0, sizeSensitivity: 1.0, density: 0.5, thickness: 2, breathingAmount: 5, breathingFrequency: 2 }
+    },
+    {
+        id: 'p3',
+        name: 'Neural Wave',
+        type: 'STRAIGHT_LINE',
+        settings: { radius: 100, radiusSensitivity: 1.0, displacementSensitivity: 1.5, density: 0.8, thickness: 3 }
+    },
+    {
         id: 'p4',
+        name: 'Circular Radius',
+        type: 'CIRCLE_RADIUS',
+        settings: { radius: 100, radiusSensitivity: 1.0, displacementSensitivity: 1.0, density: 0, thickness: 2, breathingAmount: 0, breathingFrequency: 1 }
+    },
+    {
+        id: 'p5',
         name: 'Orbital Sphere',
         type: 'SPHERICAL_PARTICLE',
         settings: { radius: 120, radiusSensitivity: 0.8, displacementSensitivity: 1.2, sizeSensitivity: 1.0, density: 0.6, thickness: 1, rotationSpeed: 1.0, breathingAmount: 5, breathingFrequency: 1 }
@@ -356,14 +362,26 @@ const App: React.FC = () => {
         const freq = settings.breathingFrequency || 2;
         const amount = settings.breathingAmount || 5;
         const breathe = Math.sin(time * freq) * amount;
-        const currentRadius = baseRadius + (intensity * 50 * settings.radiusSensitivity) + breathe;
+        
+        // Searching mode gets pulsing radius
+        let currentRadius = baseRadius + (intensity * 50 * settings.radiusSensitivity) + breathe;
+        if (mode === 'SEARCHING') {
+            currentRadius = baseRadius + Math.sin(time * 3) * 15 + Math.cos(time * 2.3) * 10;
+        }
+        
         const jitter = intensity * 10 * settings.displacementSensitivity;
         
         ctx.fillStyle = color;
-        particles.forEach(p => {
+        particles.forEach((p, idx) => {
              const rotX = time * rotSpeedX;
              const rotY = time * rotSpeedY;
-             const particleR = currentRadius + (Math.random() - 0.5) * jitter;
+             
+             // Add wobble for searching mode
+             let particleR = currentRadius + (Math.random() - 0.5) * jitter;
+             if (mode === 'SEARCHING') {
+                 particleR += Math.sin(idx * 0.5 + time * 4) * 8;
+             }
+             
              let x = particleR * Math.sin(p.phi) * Math.cos(p.theta);
              let y = particleR * Math.sin(p.phi) * Math.sin(p.theta);
              let z = particleR * Math.cos(p.phi);
@@ -373,9 +391,16 @@ const App: React.FC = () => {
              let z2 = z1 * Math.cos(rotX) + y * Math.sin(rotX);
              const scale = 300 / (300 + z2);
              const alpha = Math.max(0.1, Math.min(1, scale * p.opacity));
+             
+             // Dynamic size for searching
+             let particleSize = (p.size * scale) + intensity * 2;
+             if (mode === 'SEARCHING') {
+                 particleSize = (p.size * scale) * (0.8 + Math.sin(time * 5 + idx) * 0.3);
+             }
+             
              ctx.globalAlpha = alpha;
              ctx.beginPath();
-             ctx.arc(centerX + x1 * scale, centerY + y2 * scale, Math.max(0.5, (p.size * scale) + intensity * 2), 0, Math.PI * 2);
+             ctx.arc(centerX + x1 * scale, centerY + y2 * scale, Math.max(0.5, particleSize), 0, Math.PI * 2);
              ctx.fill();
         });
         ctx.globalAlpha = 1;
@@ -425,7 +450,8 @@ const App: React.FC = () => {
         #controls { position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: center; gap: 10px; z-index: 10; }
         button { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; opacity: 0.5; transition: all 0.3s; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
         button:hover { opacity: 0.8; }
-        #theme-btn { position: absolute; top: 20px; right: 20px; z-index: 10; opacity: 0.7; font-size: 18px; padding: 8px 12px; }
+        #theme-btn { position: absolute; top: 12px; right: 12px; z-index: 10; opacity: 0.3; font-size: 12px; padding: 4px 8px; border-radius: 12px; background: transparent; border: none; }
+        #theme-btn:hover { opacity: 0.6; }
     </style>
 </head>
 <body>

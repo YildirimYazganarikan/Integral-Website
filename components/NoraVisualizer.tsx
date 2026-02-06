@@ -24,6 +24,11 @@ interface Particle {
     // Fade properties
     fadePhase: number;
     fadeSpeed: number;
+    // Per-particle variation for smooth, uneven behavior
+    sizeMultiplier: number;        // Unique factor for audio-reactive size (0.3-1.7)
+    noiseOffsetX: number;          // Unique time offset for X displacement noise
+    noiseOffsetY: number;          // Unique time offset for Y displacement noise
+    displacementMultiplier: number; // Unique factor for displacement amount (0.5-1.5)
 }
 
 export const NoraVisualizer: React.FC<NoraVisualizerProps> = ({ mode, getVolumeLevels, profile, isDarkMode }) => {
@@ -55,6 +60,11 @@ export const NoraVisualizer: React.FC<NoraVisualizerProps> = ({ mode, getVolumeL
                 phi,
                 fadePhase: Math.random() * Math.PI * 2, // Random starting phase
                 fadeSpeed: 0.5 + Math.random() * 1.5, // Random fade speed
+                // Per-particle variation for organic, uneven behavior
+                sizeMultiplier: 0.3 + Math.random() * 1.4, // Range 0.3-1.7 for varied size response
+                noiseOffsetX: Math.random() * Math.PI * 2,  // Unique phase offset for X noise
+                noiseOffsetY: Math.random() * Math.PI * 2,  // Unique phase offset for Y noise
+                displacementMultiplier: 0.5 + Math.random(), // Range 0.5-1.5 for varied displacement
             });
         }
         particlesRef.current = newParticles;
@@ -183,12 +193,17 @@ function drawParticleCircle(
     }
 
     particles.forEach((p, idx) => {
-        // Smooth organic noise - slower, gentler waves that flow around the entire circle
-        const slowTime = time * 0.5; // Much slower time progression
-        const wave1 = Math.sin(p.angle * 3 + slowTime) * 0.5;
-        const wave2 = Math.cos(p.angle * 2 - slowTime * 0.7) * 0.3;
-        const wave3 = Math.sin(p.angle * 5 + slowTime * 1.3) * 0.2;
-        const organicNoise = (wave1 + wave2 + wave3) * settings.displacementSensitivity * 8;
+        // Smooth organic noise using per-particle offsets for unique timing
+        // Slower time progression for gentler, flowing movement
+        const slowTime = time * 0.3; // Even slower for smoother motion
+
+        // Each particle has unique noise patterns due to noiseOffsetX/Y
+        const wave1 = Math.sin(p.angle * 3 + slowTime + p.noiseOffsetX) * 0.5;
+        const wave2 = Math.cos(p.angle * 2 - slowTime * 0.7 + p.noiseOffsetY) * 0.3;
+        const wave3 = Math.sin(p.angle * 5 + slowTime * 0.8 + p.noiseOffsetX * 0.5) * 0.2;
+
+        // Apply per-particle displacement multiplier for varied displacement amounts
+        const organicNoise = (wave1 + wave2 + wave3) * settings.displacementSensitivity * 8 * p.displacementMultiplier;
 
         // Even spectral displacement around the entire circle with frequency weighting
         let spectralDisplacement = 0;
@@ -208,11 +223,10 @@ function drawParticleCircle(
             let val = val1 * (1 - blend) + val2 * blend;
 
             // Apply frequency weighting - reduce high frequency impact
-            // High frequency bins (higher indices) have less effect on displacement
             const freqWeight = 1 - (primaryIdx / freqLen) * 0.6; // Bass: 1.0, Treble: 0.4
             val = val * freqWeight;
 
-            // Stronger noise gate - require minimum signal level to prevent low-level displacement
+            // Noise gate to prevent low-level displacement
             const noiseGateThreshold = 50;
             if (val < noiseGateThreshold) {
                 val = 0;
@@ -221,16 +235,16 @@ function drawParticleCircle(
                 val = (val - noiseGateThreshold) * (255 / (255 - noiseGateThreshold));
             }
 
-            // Smooth displacement based on frequency
-            spectralDisplacement = (val / 255) * 40 * settings.displacementSensitivity;
+            // Smooth displacement based on frequency, with per-particle variation
+            spectralDisplacement = (val / 255) * 40 * settings.displacementSensitivity * p.displacementMultiplier;
         }
 
-        // Particle size influenced by audio intensity using SEPARATE sizeSensitivity
+        // Particle size with UNEVEN distribution using per-particle sizeMultiplier
         let size = p.size;
-        // Size boost from overall intensity
-        const sizeBoost = intensity * 3 * sizeSensitivity;
-        // Additional pulsing based on weighted average frequency (bass-heavy)
-        const sizePulse = weightedAvgFreq * 3 * sizeSensitivity;
+        // Size boost from overall intensity - varied per particle
+        const sizeBoost = intensity * 3 * sizeSensitivity * p.sizeMultiplier;
+        // Additional pulsing based on weighted average frequency - also varied per particle
+        const sizePulse = weightedAvgFreq * 3 * sizeSensitivity * p.sizeMultiplier;
         size = Math.max(0.5, size + sizeBoost + sizePulse);
 
         // Combine all displacement components smoothly
@@ -440,7 +454,8 @@ function drawSphericalParticle(
     const expansion = intensity * 50 * settings.radiusSensitivity;
     const currentRadius = baseRadius + expansion + breathe;
 
-    const jitterAmount = intensity * 10 * settings.displacementSensitivity;
+    const displacementSensitivity = settings.displacementSensitivity || 1;
+    const sizeSensitivity = settings.sizeSensitivity !== undefined ? settings.sizeSensitivity : 1.0;
 
     ctx.fillStyle = color;
 
@@ -450,7 +465,18 @@ function drawSphericalParticle(
         const rotX = time * rotSpeedX;
         const rotY = time * rotSpeedY;
 
-        const particleR = currentRadius + (Math.random() - 0.5) * jitterAmount;
+        // SMOOTH displacement using deterministic noise instead of Math.random()
+        // Use particle's unique position (theta/phi) and time for smooth, flowing motion
+        const slowTime = time * 0.3; // Slower time for gentler animation
+        const noiseWave1 = Math.sin(p.theta * 3 + slowTime + p.noiseOffsetX) * 0.5;
+        const noiseWave2 = Math.cos(p.phi * 2 + slowTime * 0.7 + p.noiseOffsetY) * 0.3;
+        const noiseWave3 = Math.sin((p.theta + p.phi) * 2 + slowTime * 0.5) * 0.2;
+
+        // Combine waves for organic displacement, scaled by intensity and per-particle multiplier
+        const smoothDisplacement = (noiseWave1 + noiseWave2 + noiseWave3) *
+            intensity * 15 * displacementSensitivity * p.displacementMultiplier;
+
+        const particleR = currentRadius + smoothDisplacement;
 
         let x = particleR * Math.sin(p.phi) * Math.cos(p.theta);
         let y = particleR * Math.sin(p.phi) * Math.sin(p.theta);
@@ -468,8 +494,8 @@ function drawSphericalParticle(
         const x2d = centerX + x1 * scale;
         const y2d = centerY + y2 * scale;
 
-        const sizeSensitivity = settings.sizeSensitivity !== undefined ? settings.sizeSensitivity : 1.0;
-        const size = Math.max(0.5, (p.size * scale) + (intensity * 3 * sizeSensitivity));
+        // UNEVEN size distribution using per-particle sizeMultiplier
+        const size = Math.max(0.5, (p.size * scale) + (intensity * 3 * sizeSensitivity * p.sizeMultiplier));
         const alpha = Math.max(0.1, Math.min(1, scale * p.opacity));
 
         // Calculate fade effect

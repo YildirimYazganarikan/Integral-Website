@@ -459,10 +459,10 @@ const App: React.FC = () => {
                     {/* Import/Export */}
                     <div className="flex gap-2">
                         <button onClick={() => handleExport(activeProfile)} className={`flex-1 py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded ${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`}>
-                            <Download size={14} /> Export HTML
+                            <Upload size={14} /> Export HTML
                         </button>
                         <button onClick={handleImportClick} className={`flex-1 py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded ${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`}>
-                            <Upload size={14} /> Import
+                            <Download size={14} /> Import
                         </button>
                         <input type="file" ref={fileInputRef} className="hidden" accept=".html,.json" onChange={handleFileChange} />
                     </div>
@@ -578,7 +578,6 @@ const App: React.FC = () => {
 
                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity items-center">
                                         <button onClick={(e) => { e.stopPropagation(); handleDuplicate(p.id); }} className="hover:scale-110" title="Duplicate"><Copy size={14} /></button>
-                                        <button onClick={(e) => { e.stopPropagation(); handleExport(p); }} className="hover:scale-110" title="Export this profile"><Save size={14} /></button>
                                         <button onClick={(e) => { e.stopPropagation(); setEditingProfileId(p.id); }} className="hover:scale-110"><Edit2 size={14} /></button>
                                         <button onClick={(e) => { e.stopPropagation(); handleDeleteProfile(p.id); }} className="hover:text-red-500"><Trash2 size={14} /></button>
                                     </div>

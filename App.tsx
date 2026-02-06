@@ -143,6 +143,35 @@ const App: React.FC = () => {
     let intensity = 0;
     let simInput = 0;
     let simOutput = 0;
+    let isDark = true;
+
+    function getColors() {
+        if (isDark) {
+            return {
+                primary: 'rgba(255, 255, 255, 0.9)',
+                secondary: 'rgba(255, 255, 255, 0.4)',
+                accent: '255, 255, 255'
+            };
+        } else {
+            return {
+                primary: 'rgba(0, 0, 0, 0.9)',
+                secondary: 'rgba(0, 0, 0, 0.4)',
+                accent: '0, 0, 0'
+            };
+        }
+    }
+
+    function updateTheme() {
+        document.body.style.background = isDark ? '#000' : '#fff';
+        document.body.style.color = isDark ? '#fff' : '#000';
+        document.querySelectorAll('button').forEach(btn => {
+            btn.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+            btn.style.borderColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
+            btn.style.color = isDark ? 'white' : 'black';
+        });
+        const themeBtn = document.getElementById('theme-btn');
+        if (themeBtn) themeBtn.textContent = isDark ? '☀️' : '🌙';
+    }
 
     function init() {
         resize();
@@ -154,6 +183,11 @@ const App: React.FC = () => {
                 document.querySelectorAll('.mode-btn').forEach(b => b.style.opacity = '0.5');
                 e.target.style.opacity = '1';
             });
+        });
+
+        document.getElementById('theme-btn').addEventListener('click', () => {
+            isDark = !isDark;
+            updateTheme();
         });
 
         const settings = profile.settings;
@@ -366,15 +400,13 @@ const App: React.FC = () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         const settings = profile.settings;
-        const color = 'rgba(255, 255, 255, 0.9)';
-        const secColor = 'rgba(255, 255, 255, 0.4)';
-        const accent = '255, 255, 255';
+        const colors = getColors();
         
-        if (profile.type === 'PARTICLE_CIRCLE') drawParticleCircle(canvas.width, canvas.height, time, intensity, settings, color);
-        else if (profile.type === 'STRAIGHT_LINE') drawStraightLine(canvas.width, canvas.height, time, intensity, settings, color, secColor);
-        else if (profile.type === 'SIMPLE_CIRCLE') drawSimpleCircle(canvas.width, canvas.height, time, intensity, settings, color, secColor, true);
-        else if (profile.type === 'CIRCLE_RADIUS') drawCircleRadius(canvas.width, canvas.height, time, intensity, settings, accent);
-        else if (profile.type === 'SPHERICAL_PARTICLE') drawSphericalParticle(canvas.width, canvas.height, time, intensity, settings, color, secColor);
+        if (profile.type === 'PARTICLE_CIRCLE') drawParticleCircle(canvas.width, canvas.height, time, intensity, settings, colors.primary);
+        else if (profile.type === 'STRAIGHT_LINE') drawStraightLine(canvas.width, canvas.height, time, intensity, settings, colors.primary, colors.secondary);
+        else if (profile.type === 'SIMPLE_CIRCLE') drawSimpleCircle(canvas.width, canvas.height, time, intensity, settings, colors.primary, colors.secondary, isDark);
+        else if (profile.type === 'CIRCLE_RADIUS') drawCircleRadius(canvas.width, canvas.height, time, intensity, settings, colors.accent);
+        else if (profile.type === 'SPHERICAL_PARTICLE') drawSphericalParticle(canvas.width, canvas.height, time, intensity, settings, colors.primary, colors.secondary);
         
         requestAnimationFrame(animate);
     }
@@ -388,15 +420,17 @@ const App: React.FC = () => {
     <meta charset="UTF-8">
     <title>${profileToExport.name}</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: monospace; }
+        body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: monospace; transition: background 0.3s, color 0.3s; }
         canvas { position: absolute; top: 0; left: 0; }
         #controls { position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: center; gap: 10px; z-index: 10; }
-        button { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; opacity: 0.5; transition: opacity 0.2s; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+        button { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; opacity: 0.5; transition: all 0.3s; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
         button:hover { opacity: 0.8; }
+        #theme-btn { position: absolute; top: 20px; right: 20px; z-index: 10; opacity: 0.7; font-size: 18px; padding: 8px 12px; }
     </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
+    <button id="theme-btn">☀️</button>
     <div id="controls">
         <button class="mode-btn" data-mode="LISTENING" style="opacity:1">Listening</button>
         <button class="mode-btn" data-mode="SPEAKING">Speaking</button>
@@ -542,6 +576,46 @@ const App: React.FC = () => {
                     <div className="flex justify-between items-center">
                         <h2 className="text-xl font-bold tracking-widest uppercase">Configuration</h2>
                         <button onClick={() => setShowSettings(false)}><X size={24} /></button>
+                    </div>
+
+                    {/* Project Actions (Future Supabase Integration) */}
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-end border-b pb-2 border-current opacity-50">
+                            <span className="text-xs font-bold uppercase tracking-wider">Project Actions</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                disabled
+                                className={`py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded opacity-40 cursor-not-allowed ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
+                                title="Coming soon with Supabase"
+                            >
+                                Save
+                            </button>
+                            <button
+                                disabled
+                                className={`py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded opacity-40 cursor-not-allowed ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
+                                title="Coming soon with Supabase"
+                            >
+                                Save As
+                            </button>
+                            <button
+                                disabled
+                                className={`py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded opacity-40 cursor-not-allowed ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
+                                title="Coming soon with Supabase"
+                            >
+                                Ignore Edits
+                            </button>
+                            <button
+                                disabled
+                                className={`col-span-2 py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded opacity-40 cursor-not-allowed ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
+                                title="Coming soon with Supabase"
+                            >
+                                Set as Default for {activeProfile.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                            </button>
+                        </div>
+                        <p className={`text-xs opacity-40 italic ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                            Server features coming soon with Supabase
+                        </p>
                     </div>
 
                     {/* Import/Export */}

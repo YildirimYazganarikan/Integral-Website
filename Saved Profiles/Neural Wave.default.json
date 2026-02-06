@@ -1,0 +1,12 @@
+{
+  "id": "p3",
+  "name": "Neural Wave",
+  "type": "STRAIGHT_LINE",
+  "settings": {
+    "radius": 100,
+    "radiusSensitivity": 1,
+    "displacementSensitivity": 0.4,
+    "density": 0.3,
+    "thickness": 3
+  }
+}

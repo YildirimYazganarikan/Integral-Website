@@ -1,0 +1,16 @@
+{
+  "id": "p5",
+  "name": "Orbital Sphere",
+  "type": "SPHERICAL_PARTICLE",
+  "settings": {
+    "radius": 20,
+    "radiusSensitivity": 0.8,
+    "displacementSensitivity": 1.2,
+    "sizeSensitivity": 1,
+    "density": 0.6,
+    "thickness": 1,
+    "rotationSpeed": 0.2,
+    "breathingAmount": 5,
+    "breathingFrequency": 1
+  }
+}

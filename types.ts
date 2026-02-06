@@ -32,6 +32,10 @@ export interface VisualizerSettings {
   breathingAmount?: number;     // Idle pulse size
   breathingFrequency?: number;  // Idle pulse speed
   sizeSensitivity?: number;     // How much particle sizes react to audio
+
+  // Particle fade settings
+  particleFade?: number;        // 0-1: Amount of natural fade in/out for particles
+  noiseScale?: number;          // 0-2: Scale of noise affecting fade timing
 }
 
 export interface VisualizerProfile {

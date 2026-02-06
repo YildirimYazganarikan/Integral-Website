@@ -1,0 +1,15 @@
+{
+  "id": "1770405718161",
+  "name": "Particle Flow",
+  "type": "PARTICLE_CIRCLE",
+  "settings": {
+    "radius": 95,
+    "radiusSensitivity": 3.3,
+    "displacementSensitivity": 2.4,
+    "sizeSensitivity": 0,
+    "density": 0.1,
+    "thickness": 2,
+    "breathingAmount": 5,
+    "breathingFrequency": 2.1
+  }
+}

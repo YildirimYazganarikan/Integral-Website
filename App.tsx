@@ -1,45 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLiveAgent } from './hooks/useLiveAgent';
-import { useSupabaseProfiles } from './hooks/useSupabaseProfiles';
-import { saveHtmlFile, saveDefaultTemplate, isFileServerRunning } from './lib/fileServer';
+import { saveProfile, saveProfileAsNew, setAsDefaultTemplate, loadProfile, openSavedFolder, getDefaultTemplate, loadAllProfiles, deleteProfile as deleteProfileFromDisk, generateProfileHtml } from './lib/fileServer';
 import { NoraVisualizer } from './components/NoraVisualizer';
 import { AgentMode, VisualizerProfile, ThemeType } from './types';
-import { Mic, MicOff, Settings, Plus, Trash2, Edit2, X, Sun, Moon, Circle, Activity, Aperture, Disc, Globe, Download, Upload, Save, Copy, Key, Loader2, Check, AlertCircle, FolderOpen } from 'lucide-react';
+import { Mic, MicOff, Settings, Plus, Trash2, Edit2, X, Sun, Moon, Circle, Activity, Aperture, Disc, Globe, Download, Upload, Save, Copy, Key, Check, AlertCircle, FolderOpen, RotateCcw, Loader2 } from 'lucide-react';
 
 const DEFAULT_API_KEY = 'AIzaSyCz3XxWf-iWU0VzuawBiBZTiTQ40QGW7pA';
 
-const DEFAULT_PROFILES: VisualizerProfile[] = [
-    {
-        id: 'p1',
-        name: 'Core Pulse',
-        type: 'SIMPLE_CIRCLE',
-        settings: { radius: 80, radiusSensitivity: 1.2, displacementSensitivity: 0.5, density: 0, thickness: 2, breathingAmount: 8, breathingFrequency: 1.5 }
-    },
-    {
-        id: 'p2',
-        name: 'Particle Flow',
-        type: 'PARTICLE_CIRCLE',
-        settings: { radius: 100, radiusSensitivity: 1.0, displacementSensitivity: 1.0, sizeSensitivity: 1.0, density: 0.5, thickness: 2, breathingAmount: 5, breathingFrequency: 2 }
-    },
-    {
-        id: 'p3',
-        name: 'Neural Wave',
-        type: 'STRAIGHT_LINE',
-        settings: { radius: 100, radiusSensitivity: 1.0, displacementSensitivity: 1.5, density: 0.8, thickness: 3 }
-    },
-    {
-        id: 'p4',
-        name: 'Circular Radius',
-        type: 'CIRCLE_RADIUS',
-        settings: { radius: 100, radiusSensitivity: 1.0, displacementSensitivity: 1.0, density: 0, thickness: 2, breathingAmount: 0, breathingFrequency: 1 }
-    },
-    {
-        id: 'p5',
-        name: 'Orbital Sphere',
-        type: 'SPHERICAL_PARTICLE',
-        settings: { radius: 120, radiusSensitivity: 0.8, displacementSensitivity: 1.2, sizeSensitivity: 1.0, density: 0.6, thickness: 1, rotationSpeed: 1.0, breathingAmount: 5, breathingFrequency: 1 }
-    }
-];
+// Minimal fallback settings for new profiles when no default template exists
+const FALLBACK_SETTINGS = {
+    radius: 100,
+    radiusSensitivity: 1,
+    displacementSensitivity: 1,
+    sizeSensitivity: 1,
+    density: 0.5,
+    thickness: 2,
+    breathingAmount: 5,
+    breathingFrequency: 2,
+    particleFade: 0,
+    noiseScale: 1
+};
 
 const App: React.FC = () => {
     // API Key State with localStorage persistence
@@ -57,21 +37,24 @@ const App: React.FC = () => {
     }, [apiKey]);
 
     // App State
-    const [isDarkMode, setIsDarkMode] = useState(true);
-    const [profiles, setProfiles] = useState<VisualizerProfile[]>(DEFAULT_PROFILES);
-    const [activeProfileId, setActiveProfileId] = useState<string>('p1');
+    const [isDarkMode, setIsDarkMode] = useState(false);
+    const [profiles, setProfiles] = useState<VisualizerProfile[]>([]);
+    const [activeProfileId, setActiveProfileId] = useState<string>('');
     const [showSettings, setShowSettings] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Customization State
     const [previewMode, setPreviewMode] = useState<AgentMode | null>(null);
     const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
 
-    // Supabase Integration
-    const supabase = useSupabaseProfiles();
     const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [showSaveAsDialog, setShowSaveAsDialog] = useState(false);
     const [saveAsName, setSaveAsName] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [savedProfileFilenames, setSavedProfileFilenames] = useState<Record<string, string>>({});
+    // Track original profiles to detect unsaved changes
+    const [originalProfiles, setOriginalProfiles] = useState<Record<string, VisualizerProfile>>({});
 
     // Show notification helper
     const showNotification = (type: 'success' | 'error', message: string) => {
@@ -79,7 +62,7 @@ const App: React.FC = () => {
         setTimeout(() => setNotification(null), 3000);
     };
 
-    const activeProfile = profiles.find(p => p.id === activeProfileId) || profiles[0];
+    const activeProfile = profiles.find(p => p.id === activeProfileId) || profiles[0] || null;
 
     useEffect(() => {
         // Apply theme to body
@@ -92,33 +75,143 @@ const App: React.FC = () => {
         }
     }, [isDarkMode]);
 
+    // Load profiles from disk on mount
+    useEffect(() => {
+        const loadProfiles = async () => {
+            setIsLoading(true);
+            try {
+                const loaded = await loadAllProfiles();
+                // Filter out default templates - they shouldn't appear in the profiles list
+                const userProfiles = loaded.filter(p => !(p as any)._isDefault);
+                if (userProfiles.length > 0) {
+                    // Ensure each profile has an id
+                    const profilesWithIds = userProfiles.map((p, i) => ({
+                        ...p,
+                        id: p.id || `loaded_${i}_${Date.now()}`
+                    }));
+                    setProfiles(profilesWithIds);
+                    setActiveProfileId(profilesWithIds[0].id);
+                    // Track filenames and original states
+                    const filenames: Record<string, string> = {};
+                    const originals: Record<string, VisualizerProfile> = {};
+                    profilesWithIds.forEach(p => {
+                        if ((p as any)._filename) {
+                            filenames[p.id] = (p as any)._filename;
+                        }
+                        // Store deep copy of original
+                        originals[p.id] = JSON.parse(JSON.stringify(p));
+                    });
+                    setSavedProfileFilenames(filenames);
+                    setOriginalProfiles(originals);
+                }
+            } catch (err) {
+                console.error('Failed to load profiles:', err);
+            }
+            setIsLoading(false);
+        };
+        loadProfiles();
+    }, []);
+
+    // Check if a profile has unsaved changes
+    const hasUnsavedChanges = (profileId: string): boolean => {
+        const current = profiles.find(p => p.id === profileId);
+        const original = originalProfiles[profileId];
+        if (!current || !original) return false;
+        return JSON.stringify(current) !== JSON.stringify(original);
+    };
+
+    // Save profile (override existing)
+    const handleSaveProfile = async (profile: VisualizerProfile) => {
+        setIsSaving(true);
+        try {
+            // Check if name changed - if so, delete old file first
+            const oldFilename = savedProfileFilenames[profile.id];
+            const original = originalProfiles[profile.id];
+            if (oldFilename && original && original.name !== profile.name) {
+                // Name changed, delete old file
+                await deleteProfileFromDisk(oldFilename);
+            }
+
+            const result = await saveProfile(profile);
+            if (result.success && result.filename) {
+                setSavedProfileFilenames(prev => ({ ...prev, [profile.id]: result.filename! }));
+                // Update original to match current (no more unsaved changes)
+                setOriginalProfiles(prev => ({ ...prev, [profile.id]: JSON.parse(JSON.stringify(profile)) }));
+                showNotification('success', 'Saved!');
+            } else {
+                showNotification('error', result.error || 'Save failed');
+            }
+        } catch (err) {
+            showNotification('error', 'Save failed');
+        }
+        setIsSaving(false);
+    };
+
+    // Ignore changes (revert to original)
+    const handleIgnoreChanges = (profileId: string) => {
+        const original = originalProfiles[profileId];
+        if (original) {
+            setProfiles(profiles.map(p => p.id === profileId ? { ...original } : p));
+            showNotification('success', 'Changes discarded');
+        }
+    };
+
+    // Save as copy
+    const handleSaveCopy = async (profile: VisualizerProfile) => {
+        const copyName = `${profile.name} (Copy)`;
+        const newProfile: VisualizerProfile = {
+            ...profile,
+            id: Date.now().toString(),
+            name: copyName
+        };
+        setIsSaving(true);
+        try {
+            const result = await saveProfile(newProfile);
+            if (result.success && result.filename) {
+                setProfiles([...profiles, newProfile]);
+                setSavedProfileFilenames(prev => ({ ...prev, [newProfile.id]: result.filename! }));
+                setOriginalProfiles(prev => ({ ...prev, [newProfile.id]: JSON.parse(JSON.stringify(newProfile)) }));
+                setActiveProfileId(newProfile.id);
+                showNotification('success', `Saved as ${copyName}`);
+            } else {
+                showNotification('error', result.error || 'Save failed');
+            }
+        } catch (err) {
+            showNotification('error', 'Save failed');
+        }
+        setIsSaving(false);
+    };
+
     const handleToggleMic = () => {
         if (state.isConnected) disconnect();
         else connect();
     };
 
-    const handleAddProfile = (type: ThemeType) => {
+    const handleAddProfile = async (type: ThemeType) => {
+        // Try to load default template for this type
+        const defaultTemplate = await getDefaultTemplate(type);
+
         const newProfile: VisualizerProfile = {
             id: Date.now().toString(),
-            name: `New Style`,
+            name: defaultTemplate?.name || `New ${type.replace(/_/g, ' ')}`,
             type,
-            settings: {
-                radius: 100,
-                radiusSensitivity: 1,
-                displacementSensitivity: 1,
-                sizeSensitivity: 1,
-                density: 0.5,
-                thickness: 2,
-                rotationSpeed: type === 'SPHERICAL_PARTICLE' ? 1 : undefined,
-                breathingAmount: 5,
-                breathingFrequency: 2
+            settings: defaultTemplate?.settings || {
+                ...FALLBACK_SETTINGS,
+                rotationSpeed: type === 'SPHERICAL_PARTICLE' ? 1 : undefined
             }
         };
         setProfiles([...profiles, newProfile]);
         setActiveProfileId(newProfile.id);
+        // Save new profile immediately and track as original
+        const result = await saveProfile(newProfile);
+        if (result.success && result.filename) {
+            setSavedProfileFilenames(prev => ({ ...prev, [newProfile.id]: result.filename! }));
+            setOriginalProfiles(prev => ({ ...prev, [newProfile.id]: JSON.parse(JSON.stringify(newProfile)) }));
+            showNotification('success', 'Created new profile');
+        }
     };
 
-    const handleDuplicate = (id: string) => {
+    const handleDuplicate = async (id: string) => {
         const profile = profiles.find(p => p.id === id);
         if (!profile) return;
         const newProfile = {
@@ -128,377 +221,66 @@ const App: React.FC = () => {
         };
         setProfiles([...profiles, newProfile]);
         setActiveProfileId(newProfile.id);
+        // Save new profile immediately and track as original
+        const result = await saveProfile(newProfile);
+        if (result.success && result.filename) {
+            setSavedProfileFilenames(prev => ({ ...prev, [newProfile.id]: result.filename! }));
+            setOriginalProfiles(prev => ({ ...prev, [newProfile.id]: JSON.parse(JSON.stringify(newProfile)) }));
+            showNotification('success', 'Duplicated profile');
+        }
     };
 
     const updateSetting = (key: keyof typeof activeProfile.settings, value: any) => {
         setProfiles(profiles.map(p =>
             p.id === activeProfileId ? { ...p, settings: { ...p.settings, [key]: value } } : p
         ));
+        // Changes are tracked automatically by comparing to originalProfiles
     };
 
-    const deleteProfile = (id: string) => {
+    const handleDeleteProfile = async (id: string) => {
         if (profiles.length === 1) return;
+
+        // Delete from disk if saved
+        const filename = savedProfileFilenames[id];
+        if (filename) {
+            await deleteProfileFromDisk(filename);
+        }
+
         const newProfiles = profiles.filter(p => p.id !== id);
         setProfiles(newProfiles);
         if (activeProfileId === id) setActiveProfileId(newProfiles[0].id);
+
+        // Clean up tracking
+        setSavedProfileFilenames(prev => {
+            const { [id]: _, ...rest } = prev;
+            return rest;
+        });
+        setOriginalProfiles(prev => {
+            const { [id]: _, ...rest } = prev;
+            return rest;
+        });
     };
 
     const renameProfile = (id: string, name: string) => {
         setProfiles(profiles.map(p => p.id === id ? { ...p, name } : p));
         setEditingProfileId(null);
+        // Changes are tracked automatically by comparing to originalProfiles
     };
 
-    // Export as HTML File
+    // Export as HTML File (for manual download)
     const handleExport = (profileToExport: VisualizerProfile) => {
-        const dataStr = JSON.stringify(profileToExport);
-        // Standalone Visualizer Engine Script
-        const visualizerEngineScript = `
-    const profile = JSON.parse(document.getElementById('nora-profile-data').textContent);
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    let mode = 'LISTENING';
-    let time = 0;
-    let particles = [];
-    let intensity = 0;
-    let simInput = 0;
-    let simOutput = 0;
-    let isDark = true;
-
-    function getColors() {
-        if (isDark) {
-            return {
-                primary: 'rgba(255, 255, 255, 0.9)',
-                secondary: 'rgba(255, 255, 255, 0.4)',
-                accent: '255, 255, 255'
-            };
-        } else {
-            return {
-                primary: 'rgba(0, 0, 0, 0.9)',
-                secondary: 'rgba(0, 0, 0, 0.4)',
-                accent: '0, 0, 0'
-            };
-        }
-    }
-
-    function updateTheme() {
-        document.body.style.background = isDark ? '#000' : '#fff';
-        document.body.style.color = isDark ? '#fff' : '#000';
-        document.querySelectorAll('button').forEach(btn => {
-            btn.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-            btn.style.borderColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
-            btn.style.color = isDark ? 'white' : 'black';
-        });
-        const themeBtn = document.getElementById('theme-btn');
-        if (themeBtn) themeBtn.textContent = isDark ? '☀️' : '🌙';
-    }
-
-    function init() {
-        resize();
-        window.addEventListener('resize', resize);
-        
-        document.querySelectorAll('.mode-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                mode = e.target.dataset.mode;
-                document.querySelectorAll('.mode-btn').forEach(b => b.style.opacity = '0.5');
-                e.target.style.opacity = '1';
-            });
-        });
-
-        document.getElementById('theme-btn').addEventListener('click', () => {
-            isDark = !isDark;
-            updateTheme();
-        });
-
-        const settings = profile.settings;
-        const width = canvas.width; // Initial read
-        const height = canvas.height;
-        // Count depends on settings, not screen size
-        const count = Math.floor(50 + settings.density * 250);
-
-        particles = [];
-        for (let i = 0; i < count; i++) {
-            const angle = (Math.PI * 2 * i) / count;
-            particles.push({
-                angle, 
-                size: Math.random() * 2 + 1,
-                opacity: Math.random() * 0.5 + 0.5,
-                theta: Math.random() * 2 * Math.PI,
-                phi: Math.acos(2 * Math.random() - 1)
-            });
-        }
-        animate();
-    }
-
-    function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-    }
-
-    // DRAW FUNCTIONS - Mirrored from React implementation with dynamic sizing
-    function drawParticleCircle(w, h, time, intensity, settings, color) {
-        const centerX = w / 2;
-        const centerY = h / 2;
-        const baseRadius = Math.min(w, h) * (settings.radius / 800);
-        
-        const freq = settings.breathingFrequency || 2;
-        const amount = settings.breathingAmount || 5;
-        const breathe = Math.sin(time * freq) * amount;
-        const radiusExpansion = intensity * 40 * settings.radiusSensitivity;
-        const displacementScale = intensity * 20 * settings.displacementSensitivity;
-
-        ctx.fillStyle = color;
-        particles.forEach(p => {
-            const noise = Math.sin(p.angle * 10 + time * 5) * Math.cos(p.angle * 5 - time * 2);
-            
-            // SIMULATED FREQUENCY DATA
-            let spectralDisplacement = 0;
-            if (intensity > 0.05) {
-                // Fake spikes based on angle
-                const spike = Math.abs(Math.sin(p.angle * 8 + time * 2));
-                spectralDisplacement = spike * intensity * 80 * settings.displacementSensitivity;
-            }
-
-            let size = p.size;
-            if (intensity > 0.1) size += (intensity * 2 * settings.displacementSensitivity);
-            const dynamicR = baseRadius + breathe + radiusExpansion + spectralDisplacement + (noise * displacementScale);
-            let x = centerX + Math.cos(p.angle) * dynamicR;
-            let y = centerY + Math.sin(p.angle) * dynamicR;
-            
-            if (mode === 'SEARCHING') {
-                const orbitSpeed = time * 4;
-                x = centerX + Math.cos(p.angle + orbitSpeed) * (baseRadius + Math.sin(time*5)*10);
-                y = centerY + Math.sin(p.angle + orbitSpeed) * (baseRadius + Math.sin(time*5)*10);
-            }
-            ctx.beginPath();
-            ctx.arc(x, y, size, 0, Math.PI * 2);
-            ctx.globalAlpha = p.opacity;
-            ctx.fill();
-        });
-        ctx.globalAlpha = 1;
-    }
-    
-    function drawStraightLine(w, h, time, intensity, settings, color, secColor) {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = settings.thickness;
-        ctx.lineCap = 'round';
-        const centerY = h / 2;
-        const points = Math.floor(10 + settings.density * 190);
-        const spacing = w / points;
-        const amplitude = 50 * intensity * settings.displacementSensitivity;
-
-        ctx.beginPath();
-        for (let i = 0; i <= points; i++) {
-            const x = i * spacing;
-            let offset = Math.sin(i * 0.1 + time) * 5;
-            if (intensity > 0.001) {
-                const edge = Math.sin((i / points) * Math.PI);
-                offset += (Math.sin(i * 0.2 + time * 10) + Math.cos(i * 0.5 - time * 8)) * amplitude * edge;
-            }
-            if (mode === 'SEARCHING') offset = Math.sin(i * 0.2 - time * 10) * 20 * Math.sin((i/points) * Math.PI);
-            i === 0 ? ctx.moveTo(x, centerY + offset) : ctx.lineTo(x, centerY + offset);
-        }
-        ctx.stroke();
-    }
-
-    function drawSimpleCircle(w, h, time, intensity, settings, color, secColor, isDark) {
-        const centerX = w / 2;
-        const centerY = h / 2;
-        const baseR = Math.min(w, h) * (settings.radius / 800);
-        const freq = settings.breathingFrequency || 1.5;
-        const amount = settings.breathingAmount || 5;
-        const breathe = Math.sin(time * freq) * amount;
-        const r = baseR + breathe + (intensity * 60 * settings.radiusSensitivity);
-
-        if (mode === 'SEARCHING') {
-            ctx.beginPath();
-            ctx.strokeStyle = secColor;
-            ctx.lineWidth = 2;
-            ctx.arc(centerX, centerY, baseR + Math.sin(time*10)*5 + 30, time*5, time*5 + Math.PI*1.5);
-            ctx.stroke();
-        }
-
-        ctx.fillStyle = isDark ? '#000' : '#fff';
-        ctx.strokeStyle = color;
-        ctx.lineWidth = settings.thickness;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        if (intensity > 0.05) {
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, Math.min(r, r * intensity * 0.8 * settings.displacementSensitivity), 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-
-    function drawCircleRadius(w, h, time, intensity, settings, accent) {
-        const centerX = w / 2;
-        const centerY = h / 2;
-        const freq = settings.breathingFrequency || 1;
-        const amount = settings.breathingAmount || 0;
-        const breathe = Math.sin(time * freq) * amount;
-        const r = (Math.min(w, h) * (settings.radius / 800) * 3) + (intensity * 100 * settings.radiusSensitivity) + breathe;
-        
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.rotate(time * 0.05);
-        ctx.translate(-centerX, -centerY);
-        
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, Math.max(0,r), 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(' + accent + ', 0.05)';
-        ctx.fill();
-        
-        ctx.lineWidth = settings.thickness;
-        for(let i=0; i<5; i++) {
-            const chaos = intensity * 20 * settings.displacementSensitivity;
-            const ringR = r + (i * 15) + Math.sin(time * (mode === 'SEARCHING' ? 10 : 2) - i) * ((intensity * 100 * settings.radiusSensitivity * 0.2) + chaos);
-            ctx.beginPath();
-            if (mode === 'SEARCHING') ctx.setLineDash([10, 20]); else ctx.setLineDash([]);
-            ctx.arc(centerX, centerY, Math.max(0, ringR), 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(' + accent + ',' + (0.6 * (1 - i/5)) + ')';
-            ctx.stroke();
-        }
-        ctx.restore();
-    }
-
-    function drawSphericalParticle(w, h, time, intensity, settings, color, secColor) {
-        const centerX = w / 2;
-        const centerY = h / 2;
-        const baseRadius = Math.min(w, h) * (settings.radius / 800) * 2;
-        const rotMult = settings.rotationSpeed !== undefined ? settings.rotationSpeed : 1.0;
-        let rotSpeedX = (mode === 'SEARCHING' ? 2.0 : 0.5) * rotMult;
-        let rotSpeedY = (mode === 'SEARCHING' ? 3.0 : 0.8) * rotMult;
-        
-        const freq = settings.breathingFrequency || 2;
-        const amount = settings.breathingAmount || 5;
-        const breathe = Math.sin(time * freq) * amount;
-        
-        // Searching mode gets pulsing radius
-        let currentRadius = baseRadius + (intensity * 50 * settings.radiusSensitivity) + breathe;
-        if (mode === 'SEARCHING') {
-            currentRadius = baseRadius + Math.sin(time * 3) * 15 + Math.cos(time * 2.3) * 10;
-        }
-        
-        const jitter = intensity * 10 * settings.displacementSensitivity;
-        
-        ctx.fillStyle = color;
-        particles.forEach((p, idx) => {
-             const rotX = time * rotSpeedX;
-             const rotY = time * rotSpeedY;
-             
-             // Add wobble for searching mode
-             let particleR = currentRadius + (Math.random() - 0.5) * jitter;
-             if (mode === 'SEARCHING') {
-                 particleR += Math.sin(idx * 0.5 + time * 4) * 8;
-             }
-             
-             let x = particleR * Math.sin(p.phi) * Math.cos(p.theta);
-             let y = particleR * Math.sin(p.phi) * Math.sin(p.theta);
-             let z = particleR * Math.cos(p.phi);
-             let x1 = x * Math.cos(rotY) - z * Math.sin(rotY);
-             let z1 = z * Math.cos(rotY) + x * Math.sin(rotY);
-             let y2 = y * Math.cos(rotX) - z1 * Math.sin(rotX);
-             let z2 = z1 * Math.cos(rotX) + y * Math.sin(rotX);
-             const scale = 300 / (300 + z2);
-             const alpha = Math.max(0.1, Math.min(1, scale * p.opacity));
-             
-             // Dynamic size for searching
-             let particleSize = (p.size * scale) + intensity * 2;
-             if (mode === 'SEARCHING') {
-                 particleSize = (p.size * scale) * (0.8 + Math.sin(time * 5 + idx) * 0.3);
-             }
-             
-             ctx.globalAlpha = alpha;
-             ctx.beginPath();
-             ctx.arc(centerX + x1 * scale, centerY + y2 * scale, Math.max(0.5, particleSize), 0, Math.PI * 2);
-             ctx.fill();
-        });
-        ctx.globalAlpha = 1;
-    }
-
-    function animate() {
-        if (mode === 'LISTENING') {
-            if (Math.random() > 0.95) simInput = Math.random();
-            simInput *= 0.9;
-            simOutput = 0;
-        } else if (mode === 'SPEAKING') {
-            simInput = 0;
-            simOutput = (Math.sin(time * 5) + 1) * 0.5;
-        } else {
-            simInput = 0;
-            simOutput = 0;
-        }
-        let target = mode === 'LISTENING' ? simInput : (mode === 'SPEAKING' ? simOutput : 0.2);
-        intensity += (target - intensity) * 0.1;
-        time += 0.02;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        const settings = profile.settings;
-        const colors = getColors();
-        
-        if (profile.type === 'PARTICLE_CIRCLE') drawParticleCircle(canvas.width, canvas.height, time, intensity, settings, colors.primary);
-        else if (profile.type === 'STRAIGHT_LINE') drawStraightLine(canvas.width, canvas.height, time, intensity, settings, colors.primary, colors.secondary);
-        else if (profile.type === 'SIMPLE_CIRCLE') drawSimpleCircle(canvas.width, canvas.height, time, intensity, settings, colors.primary, colors.secondary, isDark);
-        else if (profile.type === 'CIRCLE_RADIUS') drawCircleRadius(canvas.width, canvas.height, time, intensity, settings, colors.accent);
-        else if (profile.type === 'SPHERICAL_PARTICLE') drawSphericalParticle(canvas.width, canvas.height, time, intensity, settings, colors.primary, colors.secondary);
-        
-        requestAnimationFrame(animate);
-    }
-    init();
-    `;
-
-        const htmlContent = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>${profileToExport.name}</title>
-    <style>
-        body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: monospace; transition: background 0.3s, color 0.3s; }
-        canvas { position: absolute; top: 0; left: 0; }
-        #controls { position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: center; gap: 10px; z-index: 10; }
-        button { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; opacity: 0.5; transition: all 0.3s; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
-        button:hover { opacity: 0.8; }
-        #theme-btn { position: absolute; top: 12px; right: 12px; z-index: 10; opacity: 0.3; font-size: 12px; padding: 4px 8px; border-radius: 12px; background: transparent; border: none; }
-        #theme-btn:hover { opacity: 0.6; }
-    </style>
-</head>
-<body>
-    <canvas id="canvas"></canvas>
-    <button id="theme-btn">☀️</button>
-    <div id="controls">
-        <button class="mode-btn" data-mode="LISTENING" style="opacity:1">Listening</button>
-        <button class="mode-btn" data-mode="SPEAKING">Speaking</button>
-        <button class="mode-btn" data-mode="SEARCHING">Searching</button>
-    </div>
-    <script id="nora-profile-data" type="application/json">${dataStr}</script>
-    <script>${visualizerEngineScript}</script>
-</body>
-</html>`;
-
+        const htmlContent = generateProfileHtml(profileToExport, isDarkMode);
         const blob = new Blob([htmlContent], { type: 'text/html' });
         const filename = `${profileToExport.name.replace(/\s+/g, '_')}.html`;
 
-        // Try to save to project folder first
-        saveHtmlFile(filename, htmlContent).then(result => {
-            if (result.success) {
-                showNotification('success', `Saved to Saved HTML Files/${filename}`);
-            } else {
-                // Fallback to download
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                a.click();
-                URL.revokeObjectURL(url);
-                showNotification('success', `Downloaded ${filename}`);
-            }
-        });
+        // Download as file
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        showNotification('success', `Downloaded ${filename}`);
     };
 
     const handleImportClick = () => {
@@ -543,6 +325,48 @@ const App: React.FC = () => {
         }
     };
 
+    // Show loading state
+    if (isLoading) {
+        return (
+            <div className={`h-[100dvh] w-full flex items-center justify-center font-mono ${isDarkMode ? 'text-white bg-black' : 'text-black bg-white'}`}>
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="animate-spin" size={32} />
+                    <span className="text-sm opacity-70">Loading profiles...</span>
+                </div>
+            </div>
+        );
+    }
+
+    // Show empty state - prompt to create first profile
+    if (!activeProfile) {
+        return (
+            <div className={`h-[100dvh] w-full flex items-center justify-center font-mono ${isDarkMode ? 'text-white bg-black' : 'text-black bg-white'}`}>
+                <div className="flex flex-col items-center gap-6 text-center p-8">
+                    <h1 className="text-2xl font-bold tracking-widest">AI INTERFACE STUDIO</h1>
+                    <p className="opacity-70">No profiles found. Create your first visualizer:</p>
+                    <div className="flex gap-4">
+                        {(['PARTICLE_CIRCLE', 'STRAIGHT_LINE', 'SIMPLE_CIRCLE', 'CIRCLE_RADIUS', 'SPHERICAL_PARTICLE'] as ThemeType[]).map(t => (
+                            <button
+                                key={t}
+                                onClick={() => handleAddProfile(t)}
+                                className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all hover:scale-105 ${isDarkMode ? 'border-white/30 hover:bg-white/10' : 'border-black/30 hover:bg-black/5'}`}
+                            >
+                                {getThemeIcon(t)}
+                                <span className="text-xs">{t.replace(/_/g, ' ')}</span>
+                            </button>
+                        ))}
+                    </div>
+                    <button
+                        onClick={() => setIsDarkMode(!isDarkMode)}
+                        className="mt-4 opacity-50 hover:opacity-100"
+                    >
+                        {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     const showRadius = activeProfile.type !== 'STRAIGHT_LINE';
     const showRadiusSensitivity = activeProfile.type !== 'STRAIGHT_LINE';
     const showDisplacementSensitivity = true;
@@ -551,6 +375,7 @@ const App: React.FC = () => {
     const showThickness = ['STRAIGHT_LINE', 'SIMPLE_CIRCLE', 'CIRCLE_RADIUS'].includes(activeProfile.type);
     const showBreathing = ['PARTICLE_CIRCLE', 'SIMPLE_CIRCLE', 'CIRCLE_RADIUS', 'SPHERICAL_PARTICLE'].includes(activeProfile.type);
     const showRotation = activeProfile.type === 'SPHERICAL_PARTICLE';
+    const showParticleFade = ['PARTICLE_CIRCLE', 'SPHERICAL_PARTICLE'].includes(activeProfile.type);
 
     return (
         <div className={`h-[100dvh] w-full flex flex-col md:block overflow-hidden transition-colors duration-500 font-mono ${isDarkMode ? 'text-white bg-black' : 'text-black bg-white'}`}>
@@ -629,107 +454,84 @@ const App: React.FC = () => {
                         <button onClick={() => setShowSettings(false)}><X size={24} /></button>
                     </div>
 
-                    {/* Project Actions */}
-                    <div className="space-y-3">
-                        <div className="flex justify-between items-end border-b pb-2 border-current opacity-50">
-                            <span className="text-xs font-bold uppercase tracking-wider">Cloud Storage</span>
-                            {!supabase.isConfigured && (
-                                <span className="text-xs opacity-50">Not configured</span>
-                            )}
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button
-                                disabled={!supabase.isConfigured || supabase.isLoading}
-                                onClick={async () => {
-                                    const id = await supabase.saveProfile(activeProfile);
-                                    if (id) {
-                                        showNotification('success', 'Profile saved!');
-                                    } else {
-                                        showNotification('error', supabase.error || 'Failed to save');
-                                    }
-                                }}
-                                className={`py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded transition-all ${supabase.isConfigured
-                                    ? `${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`
-                                    : 'opacity-40 cursor-not-allowed'
-                                    } ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
-                                title={supabase.isConfigured ? 'Save profile to cloud' : 'Configure Supabase to enable'}
-                            >
-                                {supabase.isLoading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                                Save
-                            </button>
-                            <button
-                                disabled={!supabase.isConfigured || supabase.isLoading}
-                                onClick={() => {
-                                    setSaveAsName(activeProfile.name + ' Copy');
-                                    setShowSaveAsDialog(true);
-                                }}
-                                className={`py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded transition-all ${supabase.isConfigured
-                                    ? `${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`
-                                    : 'opacity-40 cursor-not-allowed'
-                                    } ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
-                                title={supabase.isConfigured ? 'Save as new profile' : 'Configure Supabase to enable'}
-                            >
-                                <Copy size={14} />
-                                Save As
-                            </button>
-                            <button
-                                disabled={!supabase.isConfigured || supabase.isLoading}
-                                onClick={async () => {
-                                    const reloaded = await supabase.reloadProfile(activeProfile.id);
-                                    if (reloaded) {
-                                        setProfiles(profiles.map(p => p.id === reloaded.id ? reloaded : p));
-                                        showNotification('success', 'Changes discarded');
-                                    } else {
-                                        showNotification('error', 'Profile not saved to cloud yet');
-                                    }
-                                }}
-                                className={`py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded transition-all ${supabase.isConfigured
-                                    ? `${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`
-                                    : 'opacity-40 cursor-not-allowed'
-                                    } ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
-                                title={supabase.isConfigured ? 'Reload from cloud (discard changes)' : 'Configure Supabase to enable'}
-                            >
-                                <X size={14} />
-                                Ignore Edits
-                            </button>
-                            <button
-                                disabled={!supabase.isConfigured || supabase.isLoading}
-                                onClick={async () => {
-                                    // First save the profile, then set as default
-                                    await supabase.saveProfile(activeProfile);
-                                    const success = await supabase.setDefaultTemplate(activeProfile.type, activeProfile.id);
-                                    if (success) {
-                                        showNotification('success', `Set as default for ${activeProfile.type.replace(/_/g, ' ')}`);
-                                    } else {
-                                        showNotification('error', supabase.error || 'Failed to set default');
-                                    }
-                                }}
-                                className={`py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded transition-all ${supabase.isConfigured
-                                    ? `${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`
-                                    : 'opacity-40 cursor-not-allowed'
-                                    } ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
-                                title={supabase.isConfigured ? 'Set as default template for this type' : 'Configure Supabase to enable'}
-                            >
-                                <Check size={14} />
-                                Set Default
-                            </button>
-                        </div>
-                        {!supabase.isConfigured && (
-                            <p className={`text-xs opacity-40 italic ${isDarkMode ? 'text-white' : 'text-black'}`}>
-                                Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local
-                            </p>
-                        )}
-                    </div>
+
 
                     {/* Import/Export */}
                     <div className="flex gap-2">
                         <button onClick={() => handleExport(activeProfile)} className={`flex-1 py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded ${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`}>
-                            <Download size={14} /> Export Current
+                            <Download size={14} /> Export HTML
                         </button>
                         <button onClick={handleImportClick} className={`flex-1 py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded ${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`}>
-                            <Upload size={14} /> Import HTML
+                            <Upload size={14} /> Import
                         </button>
                         <input type="file" ref={fileInputRef} className="hidden" accept=".html,.json" onChange={handleFileChange} />
+                    </div>
+
+                    {/* Local Storage */}
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-end border-b pb-2 border-current opacity-50">
+                            <span className="text-xs font-bold uppercase tracking-wider">Local Storage</span>
+                            <button
+                                onClick={() => openSavedFolder()}
+                                className="text-xs opacity-50 hover:opacity-100 flex items-center gap-1"
+                                title="Open saved profiles folder"
+                            >
+                                <FolderOpen size={12} /> Open Folder
+                            </button>
+                        </div>
+
+                        {/* Always show Set Default button */}
+                        <button
+                            onClick={async () => {
+                                setIsSaving(true);
+                                const result = await setAsDefaultTemplate(activeProfile);
+                                setIsSaving(false);
+                                if (result.success) {
+                                    showNotification('success', `Set as default for ${activeProfile.type.replace(/_/g, ' ')}`);
+                                } else {
+                                    showNotification('error', result.error || 'Failed to set default');
+                                }
+                            }}
+                            disabled={isSaving}
+                            className={`w-full py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded transition-all ${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`}
+                        >
+                            <Check size={14} />
+                            Set Default
+                        </button>
+
+                        {/* Save/Ignore/Save Copy buttons - always visible, disabled when no changes */}
+                        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-current/20">
+                            <button
+                                onClick={() => handleSaveProfile(activeProfile)}
+                                disabled={isSaving || !hasUnsavedChanges(activeProfile.id)}
+                                className={`py-2 flex items-center justify-center gap-1 text-xs uppercase border rounded transition-all ${hasUnsavedChanges(activeProfile.id)
+                                    ? (isDarkMode ? 'border-white/40 hover:bg-white/10' : 'border-black/40 hover:bg-black/10')
+                                    : 'opacity-40 cursor-not-allowed border-current/20'
+                                    }`}
+                            >
+                                {isSaving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                                Save
+                            </button>
+                            <button
+                                onClick={() => handleIgnoreChanges(activeProfile.id)}
+                                disabled={isSaving || !hasUnsavedChanges(activeProfile.id)}
+                                className={`py-2 flex items-center justify-center gap-1 text-xs uppercase border rounded transition-all ${hasUnsavedChanges(activeProfile.id)
+                                    ? (isDarkMode ? 'border-white/40 hover:bg-white/10' : 'border-black/40 hover:bg-black/10')
+                                    : 'opacity-40 cursor-not-allowed border-current/20'
+                                    }`}
+                            >
+                                <RotateCcw size={12} />
+                                Ignore
+                            </button>
+                            <button
+                                onClick={() => handleSaveCopy(activeProfile)}
+                                disabled={isSaving}
+                                className={`py-2 flex items-center justify-center gap-1 text-xs uppercase border rounded transition-all ${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`}
+                            >
+                                <Copy size={12} />
+                                Copy
+                            </button>
+                        </div>
                     </div>
 
                     {/* Profile Manager */}
@@ -773,7 +575,7 @@ const App: React.FC = () => {
                                         <button onClick={(e) => { e.stopPropagation(); handleDuplicate(p.id); }} className="hover:scale-110" title="Duplicate"><Copy size={14} /></button>
                                         <button onClick={(e) => { e.stopPropagation(); handleExport(p); }} className="hover:scale-110" title="Export this profile"><Save size={14} /></button>
                                         <button onClick={(e) => { e.stopPropagation(); setEditingProfileId(p.id); }} className="hover:scale-110"><Edit2 size={14} /></button>
-                                        <button onClick={(e) => { e.stopPropagation(); deleteProfile(p.id); }} className="hover:text-red-500"><Trash2 size={14} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteProfile(p.id); }} className="hover:text-red-500"><Trash2 size={14} /></button>
                                     </div>
                                 </div>
                             ))}
@@ -870,6 +672,29 @@ const App: React.FC = () => {
                                 </div>
                             )}
 
+                            {showParticleFade && (
+                                <>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-xs font-mono opacity-70"><span>PARTICLE FADE</span> <span>{((activeProfile.settings.particleFade || 0) * 100).toFixed(0)}%</span></div>
+                                        <input
+                                            type="range" min="0.0" max="1.0" step="0.05"
+                                            value={activeProfile.settings.particleFade || 0}
+                                            onChange={(e) => updateSetting('particleFade', Number(e.target.value))}
+                                            className={`w-full h-1 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'bg-white/20 accent-white' : 'bg-black/20 accent-black'}`}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-xs font-mono opacity-70"><span>NOISE SCALE</span> <span>{(activeProfile.settings.noiseScale || 1).toFixed(1)}</span></div>
+                                        <input
+                                            type="range" min="0.0" max="3.0" step="0.1"
+                                            value={activeProfile.settings.noiseScale || 1}
+                                            onChange={(e) => updateSetting('noiseScale', Number(e.target.value))}
+                                            className={`w-full h-1 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'bg-white/20 accent-white' : 'bg-black/20 accent-black'}`}
+                                        />
+                                    </div>
+                                </>
+                            )}
+
                             {showDensity && (
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-xs font-mono opacity-70"><span>DENSITY / DETAIL</span> <span>{(activeProfile.settings.density * 100).toFixed(0)}%</span></div>
@@ -907,16 +732,6 @@ const App: React.FC = () => {
                             <button onClick={() => setPreviewMode(AgentMode.SPEAKING)} className={`px-3 py-2 rounded text-xs border uppercase tracking-wider ${previewMode === AgentMode.SPEAKING ? (isDarkMode ? 'bg-white text-black' : 'bg-black text-white') : 'opacity-50'}`}>Speaking</button>
                             <button onClick={() => setPreviewMode(AgentMode.SEARCHING)} className={`px-3 py-2 rounded text-xs border uppercase tracking-wider ${previewMode === AgentMode.SEARCHING ? (isDarkMode ? 'bg-white text-black' : 'bg-black text-white') : 'opacity-50'}`}>Searching</button>
                         </div>
-                    </div>
-
-                    {/* Save Copy Button */}
-                    <div className="pt-4 border-t border-current opacity-80">
-                        <button
-                            onClick={() => handleDuplicate(activeProfileId)}
-                            className={`w-full py-3 flex items-center justify-center gap-2 text-xs uppercase font-bold tracking-wider border rounded transition-colors ${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`}
-                        >
-                            <Copy size={14} /> Save Copy (Ignore Duplicate)
-                        </button>
                     </div>
 
                     {/* API Settings */}
@@ -976,21 +791,24 @@ const App: React.FC = () => {
                             </button>
                             <button
                                 onClick={async () => {
-                                    const newId = await supabase.saveProfileAs(activeProfile, saveAsName);
-                                    if (newId) {
-                                        const newProfile = { ...activeProfile, id: newId, name: saveAsName };
+                                    setIsSaving(true);
+                                    const result = await saveProfileAsNew(activeProfile, saveAsName);
+                                    setIsSaving(false);
+                                    if (result.success) {
+                                        const newProfile = { ...activeProfile, id: Date.now().toString(), name: saveAsName };
                                         setProfiles([...profiles, newProfile]);
-                                        setActiveProfileId(newId);
+                                        setActiveProfileId(newProfile.id);
+                                        setSavedProfileFilenames(prev => ({ ...prev, [newProfile.id]: result.filename! }));
                                         showNotification('success', 'Profile saved!');
                                     } else {
-                                        showNotification('error', supabase.error || 'Failed to save');
+                                        showNotification('error', result.error || 'Failed to save');
                                     }
                                     setShowSaveAsDialog(false);
                                 }}
-                                disabled={!saveAsName.trim() || supabase.isLoading}
+                                disabled={!saveAsName.trim() || isSaving}
                                 className={`px-4 py-2 rounded ${isDarkMode ? 'bg-white text-black hover:bg-gray-200' : 'bg-black text-white hover:bg-gray-800'}`}
                             >
-                                {supabase.isLoading ? 'Saving...' : 'Save'}
+                                {isSaving ? 'Saving...' : 'Save'}
                             </button>
                         </div>
                     </div>

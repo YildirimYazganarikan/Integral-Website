@@ -1,29 +1,28 @@
-import { VisualizerProfile } from '../types';
-
-const API_BASE = 'http://localhost:3001/api';
-
-export interface SavedProfile {
-    name: string;
-    path: string;
-    modified: string;
-    isDefault: boolean;
-}
-
-// Check if file server is running
-export const isFileServerRunning = async (): Promise<boolean> => {
-    try {
-        const response = await fetch(`${API_BASE}/list-profiles`, { method: 'GET' });
-        return response.ok;
-    } catch {
-        return false;
-    }
-};
-
-// Generate HTML content for a profile (same as export format)
-export const generateProfileHtml = (profile: VisualizerProfile, isDark: boolean = true): string => {
-    const dataStr = JSON.stringify(profile);
-
-    const visualizerEngineScript = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ali</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: monospace; transition: background 0.3s, color 0.3s; }
+        canvas { position: absolute; top: 0; left: 0; }
+        #controls { position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: center; gap: 10px; z-index: 10; }
+        button { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; opacity: 0.5; transition: all 0.3s; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+        button:hover { opacity: 0.8; }
+        #theme-btn { position: absolute; top: 12px; right: 12px; z-index: 10; opacity: 0.3; font-size: 12px; padding: 4px 8px; border-radius: 12px; background: transparent; border: none; }
+        #theme-btn:hover { opacity: 0.6; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <button id="theme-btn">☀️</button>
+    <div id="controls">
+        <button class="mode-btn" data-mode="LISTENING" style="opacity:1">Listening</button>
+        <button class="mode-btn" data-mode="SPEAKING">Speaking</button>
+        <button class="mode-btn" data-mode="SEARCHING">Searching</button>
+    </div>
+    <script id="nora-profile-data" type="application/json">{"id":"1770409057833","name":"Ali","type":"SIMPLE_CIRCLE","settings":{"radius":299,"radiusSensitivity":1,"displacementSensitivity":1,"sizeSensitivity":1,"density":0.5,"thickness":2,"breathingAmount":5,"breathingFrequency":2,"particleFade":0,"noiseScale":1}}</script>
+    <script>
     const profile = JSON.parse(document.getElementById('nora-profile-data').textContent);
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -314,149 +313,6 @@ export const generateProfileHtml = (profile: VisualizerProfile, isDark: boolean 
         requestAnimationFrame(animate);
     }
     init();
-    `;
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>${profile.name}</title>
-    <style>
-        body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: monospace; transition: background 0.3s, color 0.3s; }
-        canvas { position: absolute; top: 0; left: 0; }
-        #controls { position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: center; gap: 10px; z-index: 10; }
-        button { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; opacity: 0.5; transition: all 0.3s; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
-        button:hover { opacity: 0.8; }
-        #theme-btn { position: absolute; top: 12px; right: 12px; z-index: 10; opacity: 0.3; font-size: 12px; padding: 4px 8px; border-radius: 12px; background: transparent; border: none; }
-        #theme-btn:hover { opacity: 0.6; }
-    </style>
-</head>
-<body>
-    <canvas id="canvas"></canvas>
-    <button id="theme-btn">☀️</button>
-    <div id="controls">
-        <button class="mode-btn" data-mode="LISTENING" style="opacity:1">Listening</button>
-        <button class="mode-btn" data-mode="SPEAKING">Speaking</button>
-        <button class="mode-btn" data-mode="SEARCHING">Searching</button>
-    </div>
-    <script id="nora-profile-data" type="application/json">${dataStr}</script>
-    <script>${visualizerEngineScript}</script>
+    </script>
 </body>
-</html>`;
-};
-
-// Load all profiles from disk (for initial load)
-export const loadAllProfiles = async (): Promise<VisualizerProfile[]> => {
-    try {
-        const response = await fetch(`${API_BASE}/list-all-profiles`);
-        const data = await response.json();
-        return data.profiles || [];
-    } catch {
-        return [];
-    }
-};
-
-// Save profile as HTML to local storage
-export const saveProfile = async (
-    profile: VisualizerProfile,
-    isDefault: boolean = false
-): Promise<{ success: boolean; path?: string; filename?: string; error?: string }> => {
-    try {
-        const htmlContent = generateProfileHtml(profile);
-        const response = await fetch(`${API_BASE}/save-profile`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                filename: profile.name,
-                htmlContent,
-                isDefault,
-                profileType: profile.type
-            }),
-        });
-        return await response.json();
-    } catch (error: any) {
-        return { success: false, error: error.message || 'Server not running' };
-    }
-};
-
-// Save profile with a new name
-export const saveProfileAsNew = async (
-    profile: VisualizerProfile,
-    newName: string
-): Promise<{ success: boolean; path?: string; filename?: string; error?: string }> => {
-    const newProfile = { ...profile, name: newName };
-    return saveProfile(newProfile, false);
-};
-
-// Set profile as default template
-export const setAsDefaultTemplate = async (
-    profile: VisualizerProfile
-): Promise<{ success: boolean; path?: string; error?: string }> => {
-    return saveProfile(profile, true);
-};
-
-// List saved profiles (metadata only)
-export const listSavedProfiles = async (): Promise<SavedProfile[]> => {
-    try {
-        const response = await fetch(`${API_BASE}/list-profiles`);
-        const data = await response.json();
-        return data.files || [];
-    } catch {
-        return [];
-    }
-};
-
-// Load profile from saved file
-export const loadProfile = async (filename: string): Promise<VisualizerProfile | null> => {
-    try {
-        const response = await fetch(`${API_BASE}/load-profile?filename=${encodeURIComponent(filename)}`);
-        const data = await response.json();
-        return data.profile || null;
-    } catch {
-        return null;
-    }
-};
-
-// Get default template for a profile type
-export const getDefaultTemplate = async (type: string): Promise<VisualizerProfile | null> => {
-    try {
-        const response = await fetch(`${API_BASE}/get-default-template?type=${encodeURIComponent(type)}`);
-        const data = await response.json();
-        if (data.found && data.profile) {
-            return data.profile;
-        }
-        return null;
-    } catch {
-        return null;
-    }
-};
-
-// Delete saved profile
-export const deleteProfile = async (filename: string): Promise<boolean> => {
-    try {
-        const response = await fetch(`${API_BASE}/delete-profile`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename }),
-        });
-        const data = await response.json();
-        return data.success || false;
-    } catch {
-        return false;
-    }
-};
-
-// Open saved profiles folder
-export const openSavedFolder = async (): Promise<boolean> => {
-    try {
-        const response = await fetch(`${API_BASE}/open-folder`);
-        const data = await response.json();
-        return data.success || false;
-    } catch {
-        return false;
-    }
-};
-
-// Legacy exports for backward compatibility
-export const saveHtmlFile = saveProfile;
-export const saveDefaultTemplate = setAsDefaultTemplate;
+</html>

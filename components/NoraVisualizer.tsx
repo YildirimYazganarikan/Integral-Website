@@ -21,6 +21,9 @@ interface Particle {
     // 3D properties
     theta?: number;
     phi?: number;
+    // Fade properties
+    fadePhase: number;
+    fadeSpeed: number;
 }
 
 export const NoraVisualizer: React.FC<NoraVisualizerProps> = ({ mode, getVolumeLevels, profile, isDarkMode }) => {
@@ -49,7 +52,9 @@ export const NoraVisualizer: React.FC<NoraVisualizerProps> = ({ mode, getVolumeL
                 distance: 100, // Placeholder
                 opacity: Math.random() * 0.5 + 0.5,
                 theta,
-                phi
+                phi,
+                fadePhase: Math.random() * Math.PI * 2, // Random starting phase
+                fadeSpeed: 0.5 + Math.random() * 1.5, // Random fade speed
             });
         }
         particlesRef.current = newParticles;
@@ -242,9 +247,22 @@ function drawParticleCircle(
             size = p.size * 0.8; // Slightly smaller during search
         }
 
+        // Calculate fade effect
+        const particleFade = settings.particleFade !== undefined ? settings.particleFade : 0;
+        const noiseScale = settings.noiseScale !== undefined ? settings.noiseScale : 1;
+
+        let fadeAlpha = p.opacity;
+        if (particleFade > 0) {
+            // Apply noise-based fade timing
+            const noiseOffset = Math.sin(p.angle * noiseScale * 3 + time * 0.3) * 0.5;
+            const fadeValue = Math.sin(time * p.fadeSpeed + p.fadePhase + noiseOffset);
+            // Map sine wave to fade: -1 to 1 -> 0 to 1, then apply particleFade amount
+            fadeAlpha = p.opacity * (1 - particleFade + particleFade * (fadeValue * 0.5 + 0.5));
+        }
+
         ctx.beginPath();
         ctx.arc(x, y, size, 0, Math.PI * 2);
-        ctx.globalAlpha = p.opacity;
+        ctx.globalAlpha = fadeAlpha;
         ctx.fill();
     });
     ctx.globalAlpha = 1.0;
@@ -454,7 +472,18 @@ function drawSphericalParticle(
         const size = Math.max(0.5, (p.size * scale) + (intensity * 3 * sizeSensitivity));
         const alpha = Math.max(0.1, Math.min(1, scale * p.opacity));
 
-        ctx.globalAlpha = alpha;
+        // Calculate fade effect
+        const particleFade = settings.particleFade !== undefined ? settings.particleFade : 0;
+        const noiseScale = settings.noiseScale !== undefined ? settings.noiseScale : 1;
+
+        let fadeAlpha = alpha;
+        if (particleFade > 0 && p.fadePhase !== undefined) {
+            const noiseOffset = Math.sin((p.theta || 0) * noiseScale * 3 + time * 0.3) * 0.5;
+            const fadeValue = Math.sin(time * p.fadeSpeed + p.fadePhase + noiseOffset);
+            fadeAlpha = alpha * (1 - particleFade + particleFade * (fadeValue * 0.5 + 0.5));
+        }
+
+        ctx.globalAlpha = fadeAlpha;
         ctx.beginPath();
         ctx.arc(x2d, y2d, size, 0, Math.PI * 2);
         ctx.fill();

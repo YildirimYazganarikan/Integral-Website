@@ -1,0 +1,15 @@
+{
+  "id": "1770404868686",
+  "name": "New Style",
+  "type": "SIMPLE_CIRCLE",
+  "settings": {
+    "radius": 300,
+    "radiusSensitivity": 1,
+    "displacementSensitivity": 1,
+    "sizeSensitivity": 1,
+    "density": 0.5,
+    "thickness": 2,
+    "breathingAmount": 5,
+    "breathingFrequency": 2
+  }
+}

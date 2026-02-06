@@ -103,10 +103,11 @@ export const useLiveAgent = (apiKey?: string) => {
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         config: {
           responseModalities: [Modality.AUDIO],
-          systemInstruction: `You are Nora, a helpful, witty, and concise voice assistant.`,
+          systemInstruction: `You are Nora, a helpful, witty, and concise voice assistant. You have access to Google Search to find current information when needed.`,
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }
-          }
+          },
+          tools: [{ googleSearch: {} }]
         },
         callbacks: {
           onopen: () => {

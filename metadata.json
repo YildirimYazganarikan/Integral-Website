@@ -1,0 +1,7 @@
+{
+  "name": "Nora Voice Agent",
+  "description": "A real-time voice agent with reactive UI animations for listening, speaking, and searching modes.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

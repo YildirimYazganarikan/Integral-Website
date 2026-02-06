@@ -178,74 +178,64 @@ function drawParticleCircle(
 
     ctx.fillStyle = color;
 
-    // Precompute weighted average frequency (bass-heavy) for size pulsing
-    let weightedAvgFreq = 0;
+    // Compute global smoothed intensity from frequency data for EVEN displacement
+    let globalFreqIntensity = 0;
     if (freqData && freqData.length > 0) {
         let weightedSum = 0;
         let totalWeight = 0;
         for (let i = 0; i < freqData.length; i++) {
-            // Weight bass frequencies (low indices) more heavily
-            const weight = 1 - (i / freqData.length) * 0.7; // Bass gets 1.0, highs get 0.3
+            // Weight bass frequencies more heavily
+            const weight = 1 - (i / freqData.length) * 0.7;
             weightedSum += freqData[i] * weight;
             totalWeight += weight;
         }
-        weightedAvgFreq = weightedSum / totalWeight / 255;
+        const rawIntensity = weightedSum / totalWeight / 255;
+        // Apply noise gate
+        globalFreqIntensity = rawIntensity > 0.15 ? (rawIntensity - 0.15) / 0.85 : 0;
     }
 
     particles.forEach((p, idx) => {
-        // Smooth organic noise using per-particle offsets for unique timing
-        // Slower time progression for gentler, flowing movement
-        const slowTime = time * 0.3; // Even slower for smoother motion
+        // SMOOTH organic noise using per-particle offsets for unique timing
+        // Much slower time progression for gentler, flowing movement
+        const slowTime = time * 0.15; // Very slow for smooth motion
 
         // Each particle has unique noise patterns due to noiseOffsetX/Y
-        const wave1 = Math.sin(p.angle * 3 + slowTime + p.noiseOffsetX) * 0.5;
-        const wave2 = Math.cos(p.angle * 2 - slowTime * 0.7 + p.noiseOffsetY) * 0.3;
-        const wave3 = Math.sin(p.angle * 5 + slowTime * 0.8 + p.noiseOffsetX * 0.5) * 0.2;
+        // Reduced amplitudes for gentler displacement
+        const wave1 = Math.sin(p.angle * 3 + slowTime + p.noiseOffsetX) * 0.35;
+        const wave2 = Math.cos(p.angle * 2 - slowTime * 0.7 + p.noiseOffsetY) * 0.2;
+        const wave3 = Math.sin(p.angle * 5 + slowTime * 0.5 + p.noiseOffsetX * 0.5) * 0.15;
 
         // Apply per-particle displacement multiplier for varied displacement amounts
-        const organicNoise = (wave1 + wave2 + wave3) * settings.displacementSensitivity * 8 * p.displacementMultiplier;
+        const organicNoise = (wave1 + wave2 + wave3) * settings.displacementSensitivity * 6 * p.displacementMultiplier;
 
-        // Even spectral displacement around the entire circle with frequency weighting
-        let spectralDisplacement = 0;
-        if (freqData && freqData.length > 0) {
-            // Map angle to frequency bin evenly across the full circle
-            const angleNorm = p.angle / (Math.PI * 2); // 0..1
+        // EVEN displacement: Apply global frequency intensity to ALL particles equally
+        // Each particle varies only by its displacementMultiplier, not by angle
+        const spectralDisplacement = globalFreqIntensity * 35 * settings.displacementSensitivity * p.displacementMultiplier;
 
-            // Sample from frequency data with wrapping
-            const freqLen = freqData.length;
-            const primaryIdx = Math.floor(angleNorm * freqLen) % freqLen;
-            const nextIdx = (primaryIdx + 1) % freqLen;
-            const blend = (angleNorm * freqLen) % 1;
-
-            // Blend between adjacent frequencies for smoothness
-            const val1 = freqData[primaryIdx] || 0;
-            const val2 = freqData[nextIdx] || 0;
-            let val = val1 * (1 - blend) + val2 * blend;
-
-            // Apply frequency weighting - reduce high frequency impact
-            const freqWeight = 1 - (primaryIdx / freqLen) * 0.6; // Bass: 1.0, Treble: 0.4
-            val = val * freqWeight;
-
-            // Noise gate to prevent low-level displacement
-            const noiseGateThreshold = 50;
-            if (val < noiseGateThreshold) {
-                val = 0;
-            } else {
-                // Gradual ramp after threshold
-                val = (val - noiseGateThreshold) * (255 / (255 - noiseGateThreshold));
-            }
-
-            // Smooth displacement based on frequency, with per-particle variation
-            spectralDisplacement = (val / 255) * 40 * settings.displacementSensitivity * p.displacementMultiplier;
-        }
-
-        // Particle size with UNEVEN distribution using per-particle sizeMultiplier
+        // UNEVEN size distribution using per-particle frequency sampling
         let size = p.size;
-        // Size boost from overall intensity - varied per particle
-        const sizeBoost = intensity * 3 * sizeSensitivity * p.sizeMultiplier;
-        // Additional pulsing based on weighted average frequency - also varied per particle
-        const sizePulse = weightedAvgFreq * 3 * sizeSensitivity * p.sizeMultiplier;
-        size = Math.max(0.5, size + sizeBoost + sizePulse);
+        if (freqData && freqData.length > 0) {
+            // Each particle samples a different frequency bin based on its unique noiseOffsetX
+            // This creates organic variation where some particles react to bass, others to treble
+            const particleFreqIdx = Math.floor((p.noiseOffsetX / (Math.PI * 2)) * freqData.length) % freqData.length;
+
+            // Sample a small range around that index for smoothness
+            const range = 3;
+            let freqSum = 0;
+            for (let j = -range; j <= range; j++) {
+                const sampleIdx = (particleFreqIdx + j + freqData.length) % freqData.length;
+                freqSum += freqData[sampleIdx];
+            }
+            const particleFreqVal = freqSum / (range * 2 + 1) / 255;
+
+            // Apply per-particle frequency-based size boost
+            const freqSizeBoost = particleFreqVal * 4 * sizeSensitivity * p.sizeMultiplier;
+            size = Math.max(0.5, size + freqSizeBoost);
+        } else {
+            // Fallback to intensity-based sizing
+            const sizeBoost = intensity * 3 * sizeSensitivity * p.sizeMultiplier;
+            size = Math.max(0.5, size + sizeBoost);
+        }
 
         // Combine all displacement components smoothly
         const dynamicR = baseRadius + breathe + radiusExpansion + spectralDisplacement + organicNoise;
@@ -466,15 +456,17 @@ function drawSphericalParticle(
         const rotY = time * rotSpeedY;
 
         // SMOOTH displacement using deterministic noise instead of Math.random()
-        // Use particle's unique position (theta/phi) and time for smooth, flowing motion
-        const slowTime = time * 0.3; // Slower time for gentler animation
-        const noiseWave1 = Math.sin(p.theta * 3 + slowTime + p.noiseOffsetX) * 0.5;
-        const noiseWave2 = Math.cos(p.phi * 2 + slowTime * 0.7 + p.noiseOffsetY) * 0.3;
-        const noiseWave3 = Math.sin((p.theta + p.phi) * 2 + slowTime * 0.5) * 0.2;
+        // Much slower time for very gentle animation - reduced from 0.3 to 0.15
+        const slowTime = time * 0.15;
+
+        // Reduced wave amplitudes for gentler displacement
+        const noiseWave1 = Math.sin(p.theta * 3 + slowTime + p.noiseOffsetX) * 0.35;
+        const noiseWave2 = Math.cos(p.phi * 2 + slowTime * 0.7 + p.noiseOffsetY) * 0.2;
+        const noiseWave3 = Math.sin((p.theta + p.phi) * 2 + slowTime * 0.5) * 0.15;
 
         // Combine waves for organic displacement, scaled by intensity and per-particle multiplier
         const smoothDisplacement = (noiseWave1 + noiseWave2 + noiseWave3) *
-            intensity * 15 * displacementSensitivity * p.displacementMultiplier;
+            intensity * 12 * displacementSensitivity * p.displacementMultiplier;
 
         const particleR = currentRadius + smoothDisplacement;
 
@@ -494,8 +486,12 @@ function drawSphericalParticle(
         const x2d = centerX + x1 * scale;
         const y2d = centerY + y2 * scale;
 
-        // UNEVEN size distribution using per-particle sizeMultiplier
-        const size = Math.max(0.5, (p.size * scale) + (intensity * 3 * sizeSensitivity * p.sizeMultiplier));
+        // UNEVEN size distribution using per-particle multiplier for organic "breathing"
+        // The sizeMultiplier varies from 0.3-1.7 so some particles grow much more than others
+        const baseSize = p.size * scale;
+        const sizeBoost = intensity * 4 * sizeSensitivity * p.sizeMultiplier;
+        const size = Math.max(0.5, baseSize + sizeBoost);
+
         const alpha = Math.max(0.1, Math.min(1, scale * p.opacity));
 
         // Calculate fade effect

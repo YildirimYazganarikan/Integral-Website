@@ -1,0 +1,5 @@
+{
+  "name": "Squid Skin Particle Sphere",
+  "description": "A 3D spherical particle simulation mimicking the pulsating chromatophores of squid skin using React, Canvas, and Tailwind CSS.",
+  "requestFramePermissions": []
+}

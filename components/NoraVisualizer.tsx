@@ -136,7 +136,7 @@ export const NoraVisualizer: React.FC<NoraVisualizerProps> = ({ mode, getVolumeL
                 drawCircleRadius(ctx, width, height, timeRef.current, intensity, profile.settings, mode, accentRGB);
             }
             else if (profile.type === 'SPHERICAL_PARTICLE') {
-                drawSphericalParticle(ctx, width, height, timeRef.current, intensity, particlesRef.current, profile.settings, mode, primaryColor, secondaryColor);
+                drawSphericalParticle(ctx, width, height, timeRef.current, intensity, particlesRef.current, profile.settings, mode, primaryColor, secondaryColor, isDarkMode);
             }
 
             requestRef.current = requestAnimationFrame(render);
@@ -377,7 +377,7 @@ function drawCircleRadius(
 
     const pulse = intensity * 100 * settings.radiusSensitivity;
     // Scale base radius
-    const baseRadius = Math.min(w, h) * (settings.radius / 800) * 3; // Multiplier to match visual weight
+    const baseRadius = Math.min(w, h) * (settings.radius / 800) * 3;
     const ringCount = 5;
     const ringSpacing = 15;
 
@@ -398,9 +398,11 @@ function drawCircleRadius(
     ctx.fill();
 
     ctx.lineWidth = settings.thickness;
+    ctx.setLineDash([]);
 
+    // Draw standard rings
     for (let i = 0; i < ringCount; i++) {
-        const speed = mode === AgentMode.SEARCHING ? 10 : 2;
+        const speed = mode === AgentMode.SEARCHING ? 4 : 2;
         const chaos = intensity * 20 * settings.displacementSensitivity;
         const ringPulse = Math.sin(time * speed - i) * (pulse * 0.2 + chaos);
         const ringR = r + (i * ringSpacing) + ringPulse;
@@ -408,12 +410,39 @@ function drawCircleRadius(
         const opacity = (0.6) * (1 - (i / ringCount));
 
         ctx.beginPath();
-        if (mode === AgentMode.SEARCHING) ctx.setLineDash([10, 20]);
-        else ctx.setLineDash([]);
-
         ctx.arc(centerX, centerY, Math.max(0, ringR), 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(${accentRGB}, ${opacity})`;
         ctx.stroke();
+    }
+
+    // === SEARCHING MODE: Signal Rings ===
+    if (mode === AgentMode.SEARCHING) {
+        const signalSpeed = settings.signalSpeed ?? 2.0;
+        const signalMaxRadius = settings.signalMaxRadius ?? 200;
+        const signalCount = settings.signalCount ?? 3;
+        const signalThickness = settings.signalThickness ?? 2;
+
+        for (let i = 0; i < signalCount; i++) {
+            // Stagger signals evenly
+            const phase = (time * signalSpeed + (i * (Math.PI * 2 / signalCount))) % (Math.PI * 2);
+            const progress = phase / (Math.PI * 2); // 0 to 1
+
+            // Signal expands from center outward
+            const signalRadius = r + (progress * signalMaxRadius);
+
+            // Fade out as it expands (fade in quickly, fade out slowly)
+            const fadeIn = Math.min(1, progress * 4); // Quick fade in
+            const fadeOut = 1 - progress; // Linear fade out
+            const signalOpacity = fadeIn * fadeOut * 0.8;
+
+            if (signalOpacity > 0.01) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, Math.max(0, signalRadius), 0, Math.PI * 2);
+                ctx.lineWidth = signalThickness * (1 - progress * 0.5); // Thin as it expands
+                ctx.strokeStyle = `rgba(${accentRGB}, ${signalOpacity})`;
+                ctx.stroke();
+            }
+        }
     }
 
     ctx.restore();
@@ -421,103 +450,204 @@ function drawCircleRadius(
 
 function drawSphericalParticle(
     ctx: CanvasRenderingContext2D, w: number, h: number, time: number, intensity: number,
-    particles: Particle[], settings: any, mode: AgentMode, color: string, secondaryColor: string
+    particles: Particle[], settings: any, mode: AgentMode, color: string, secondaryColor: string, isDark: boolean = true
 ) {
     const centerX = w / 2;
     const centerY = h / 2;
-    const baseRadius = Math.min(w, h) * (settings.radius / 800) * 2;
 
-    const rotMult = settings.rotationSpeed !== undefined ? settings.rotationSpeed : 1.0;
+    // === EXTRACT ALL SQUID SETTINGS WITH DEFAULTS ===
+    const baseRadius = settings.radius ?? 160;
+    const baseSize = settings.baseSize ?? 3.9;
+    const baseOpacity = settings.opacity ?? 0.6;
+    const rotationSpeed = settings.rotationSpeed ?? 0.2;
 
-    let rotSpeedX = 0.5 * rotMult;
-    let rotSpeedY = 0.8 * rotMult;
+    // Squid Effect
+    const squidSpeed = settings.squidSpeed ?? 3.3;
+    const squidAmplitude = settings.squidAmplitude ?? 2.2;
+    const squidOpacityVar = settings.squidOpacityVar ?? 0.45;
 
-    if (mode === AgentMode.SEARCHING) {
-        rotSpeedX = 2.0 * rotMult;
-        rotSpeedY = 3.0 * rotMult;
+    // Breathing
+    const breathingFrequency = settings.breathingFrequency ?? 0.3;
+    const breathingAmplitude = settings.breathingAmplitude ?? 29;
+
+    // Mode: Listening
+    const listeningTriggerSens = settings.listeningTriggerSens ?? 0.078;
+    const listeningIntensity = settings.listeningIntensity ?? 0.8;
+
+    // Mode: Speaking
+    const speakingRate = settings.speakingRate ?? 16;
+    const speakingIntensity = settings.speakingIntensity ?? 0.4;
+
+    // Mode: Searching
+    const searchingSpeed = settings.searchingSpeed ?? 0.8;
+    const searchingJitter = settings.searchingJitter ?? 23;
+
+    // Outer Sphere
+    const enableOuterSphere = settings.enableOuterSphere ?? 0;
+    const outerSphereRadius = settings.outerSphereRadius ?? 300;
+    const outerSphereSpeed = settings.outerSphereSpeed ?? 8;
+    const outerSphereDensity = settings.outerSphereDensity ?? 0.2;
+
+    // Colors
+    const useCustomColors = settings.useCustomColors ?? 0;
+    const particleColor = settings.particleColor ?? '#88aaff';
+    const outerSphereColor = settings.outerSphereColor ?? '#ff6464';
+
+    // Parse hex color to RGB
+    const hexToRgb = (hex: string): { r: number, g: number, b: number } => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : { r: 136, g: 170, b: 255 };
+    };
+
+    // === MODE-BASED INTENSITY CALCULATION ===
+    let targetIntensity = intensity;
+
+    if (mode === AgentMode.LISTENING) {
+        // Spike based on audio + random trigger for simulation
+        if (intensity > 0.1 || Math.random() < listeningTriggerSens) {
+            targetIntensity = Math.max(intensity, Math.random() * listeningIntensity);
+        }
+    } else if (mode === AgentMode.SPEAKING) {
+        // Oscillating intensity based on speaking rate
+        targetIntensity = (Math.sin(time * speakingRate) + 1) * 0.5 * speakingIntensity + intensity * 0.5;
+    } else if (mode === AgentMode.SEARCHING) {
+        // Steady moderate intensity
+        targetIntensity = 0.3 + intensity * 0.3;
     }
 
-    const freq = settings.breathingFrequency || 2;
-    const amount = settings.breathingAmount || 5;
-    const breathe = Math.sin(time * freq) * amount;
+    // === ROTATION SPEED (MODE-DEPENDENT) ===
+    let rotSpeedX = rotationSpeed * 0.5;
+    let rotSpeedY = rotationSpeed * 0.8;
 
-    const expansion = intensity * 50 * settings.radiusSensitivity;
-    const currentRadius = baseRadius + expansion + breathe;
+    if (mode === AgentMode.SEARCHING) {
+        rotSpeedX = searchingSpeed;
+        rotSpeedY = searchingSpeed * 1.5;
+    }
 
-    const displacementSensitivity = settings.displacementSensitivity || 1;
-    const sizeSensitivity = settings.sizeSensitivity !== undefined ? settings.sizeSensitivity : 1.0;
+    const rotX = time * rotSpeedX;
+    const rotY = time * rotSpeedY;
 
-    ctx.fillStyle = color;
+    // === BREATHING ANIMATION ===
+    const breathe = Math.sin(time * breathingFrequency) * breathingAmplitude;
+    const currentRadius = baseRadius + (targetIntensity * 40) + breathe;
 
+    // === DRAW MAIN PARTICLES ===
     particles.forEach(p => {
         if (p.theta === undefined || p.phi === undefined) return;
 
-        const rotX = time * rotSpeedX;
-        const rotY = time * rotSpeedY;
+        // Squid pulsing effect (per-particle phase offset)
+        const squidPulse = Math.sin(time * squidSpeed + p.fadePhase);
 
-        // SMOOTH displacement using deterministic noise instead of Math.random()
-        // Much slower time for very gentle animation - reduced from 0.3 to 0.15
-        const slowTime = time * 0.15;
+        // Jitter based on mode
+        let jitter = targetIntensity * 10;
+        if (mode === AgentMode.SEARCHING) {
+            jitter = searchingJitter;
+        }
 
-        // Reduced wave amplitudes for gentler displacement
-        const noiseWave1 = Math.sin(p.theta * 3 + slowTime + p.noiseOffsetX) * 0.35;
-        const noiseWave2 = Math.cos(p.phi * 2 + slowTime * 0.7 + p.noiseOffsetY) * 0.2;
-        const noiseWave3 = Math.sin((p.theta + p.phi) * 2 + slowTime * 0.5) * 0.15;
+        const r = currentRadius + (p.displacementMultiplier * jitter);
 
-        // Combine waves for organic displacement, scaled by intensity and per-particle multiplier
-        const smoothDisplacement = (noiseWave1 + noiseWave2 + noiseWave3) *
-            intensity * 12 * displacementSensitivity * p.displacementMultiplier;
+        let x = r * Math.sin(p.phi) * Math.cos(p.theta);
+        let y = r * Math.sin(p.phi) * Math.sin(p.theta);
+        let z = r * Math.cos(p.phi);
 
-        const particleR = currentRadius + smoothDisplacement;
-
-        let x = particleR * Math.sin(p.phi) * Math.cos(p.theta);
-        let y = particleR * Math.sin(p.phi) * Math.sin(p.theta);
-        let z = particleR * Math.cos(p.phi);
-
+        // Rotation
         let x1 = x * Math.cos(rotY) - z * Math.sin(rotY);
         let z1 = z * Math.cos(rotY) + x * Math.sin(rotY);
-
         let y2 = y * Math.cos(rotX) - z1 * Math.sin(rotX);
         let z2 = z1 * Math.cos(rotX) + y * Math.sin(rotX);
 
-        const fov = 300;
+        // Perspective projection
+        const fov = 400;
         const scale = fov / (fov + z2);
+        const projectedX = centerX + x1 * scale;
+        const projectedY = centerY + y2 * scale;
 
-        const x2d = centerX + x1 * scale;
-        const y2d = centerY + y2 * scale;
+        // Squid size pulsing
+        const pulseScale = 1 + (squidPulse * squidAmplitude * 0.5);
+        let size = (p.sizeMultiplier * baseSize * scale) * pulseScale;
+        size += targetIntensity * 5 * scale;
 
-        // UNEVEN size distribution using per-particle multiplier for organic "breathing"
-        // The sizeMultiplier varies from 0.3-1.7 so some particles grow much more than others
-        const baseSize = p.size * scale;
-        const sizeBoost = intensity * 4 * sizeSensitivity * p.sizeMultiplier;
-        const size = Math.max(0.5, baseSize + sizeBoost);
+        // Squid opacity pulsing
+        let alpha = baseOpacity * scale;
+        alpha *= (1 + squidPulse * squidOpacityVar);
+        alpha = Math.max(0, Math.min(1, alpha));
 
-        const alpha = Math.max(0.1, Math.min(1, scale * p.opacity));
-
-        // Calculate fade effect
-        const particleFade = settings.particleFade !== undefined ? settings.particleFade : 0;
-        const noiseScale = settings.noiseScale !== undefined ? settings.noiseScale : 1;
-
-        let fadeAlpha = alpha;
-        if (particleFade > 0 && p.fadePhase !== undefined) {
-            const noiseOffset = Math.sin((p.theta || 0) * noiseScale * 3 + time * 0.3) * 0.5;
-            const fadeValue = Math.sin(time * p.fadeSpeed + p.fadePhase + noiseOffset);
-            fadeAlpha = alpha * (1 - particleFade + particleFade * (fadeValue * 0.5 + 0.5));
-        }
-
-        ctx.globalAlpha = fadeAlpha;
         ctx.beginPath();
-        ctx.arc(x2d, y2d, size, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.arc(projectedX, projectedY, Math.max(0, size), 0, Math.PI * 2);
 
-        if (mode === AgentMode.SEARCHING && Math.random() > 0.98) {
-            ctx.strokeStyle = secondaryColor;
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(x2d, y2d);
-            ctx.stroke();
+        // Color calculation
+        if (useCustomColors) {
+            // Use custom particle color
+            const rgb = hexToRgb(particleColor);
+            const pulseFactor = 0.7 + (squidPulse * 0.3); // Subtle pulse variation
+            ctx.fillStyle = `rgba(${Math.floor(rgb.r * scale * pulseFactor)}, ${Math.floor(rgb.g * scale * pulseFactor)}, ${Math.floor(rgb.b * scale * pulseFactor)}, ${alpha})`;
+        } else if (isDark) {
+            // Original squid blue tint for dark mode
+            const brightness = Math.floor(255 * scale);
+            const blueTint = Math.floor(200 + (squidPulse * 55));
+            ctx.fillStyle = `rgba(${brightness}, ${brightness}, ${blueTint}, ${alpha})`;
+        } else {
+            // Inverted for light mode: dark particles with subtle blue
+            const darkness = Math.floor(255 * (1 - scale));
+            const blueTint = Math.floor(55 - (squidPulse * 55));
+            ctx.fillStyle = `rgba(${darkness}, ${darkness}, ${Math.max(0, blueTint)}, ${alpha})`;
         }
+        ctx.fill();
     });
+
+    // === OUTER SPHERE (SEARCHING MODE ONLY) ===
+    if (mode === AgentMode.SEARCHING && enableOuterSphere > 0) {
+        const outerRotX = time * outerSphereSpeed * 0.1;
+        const outerRotY = time * outerSphereSpeed * 0.15;
+
+        // Fast blink effect
+        const globalAlpha = (Math.sin(time * outerSphereSpeed * 2) + 1) * 0.5 * 0.3;
+
+        // Generate outer particles on the fly (or use a subset)
+        const outerCount = Math.floor(20 + outerSphereDensity * 300);
+        const goldenRatio = (1 + Math.sqrt(5)) / 2;
+
+        for (let i = 0; i < outerCount; i++) {
+            const theta = 2 * Math.PI * i / goldenRatio;
+            const phi = Math.acos(1 - 2 * (i + 0.5) / outerCount);
+            const pBaseSize = Math.random() * 1.0 + 0.5;
+
+            let x = outerSphereRadius * Math.sin(phi) * Math.cos(theta);
+            let y = outerSphereRadius * Math.sin(phi) * Math.sin(theta);
+            let z = outerSphereRadius * Math.cos(phi);
+
+            let x1 = x * Math.cos(outerRotY) - z * Math.sin(outerRotY);
+            let z1 = z * Math.cos(outerRotY) + x * Math.sin(outerRotY);
+            let y2 = y * Math.cos(outerRotX) - z1 * Math.sin(outerRotX);
+            let z2 = z1 * Math.cos(outerRotX) + y * Math.sin(outerRotX);
+
+            const fov = 400;
+            const scale = fov / (fov + z2);
+            const projectedX = centerX + x1 * scale;
+            const projectedY = centerY + y2 * scale;
+
+            const size = pBaseSize * scale * 2;
+
+            ctx.beginPath();
+            ctx.arc(projectedX, projectedY, Math.max(0, size), 0, Math.PI * 2);
+
+            // Outer sphere color
+            if (useCustomColors) {
+                const rgb = hexToRgb(outerSphereColor);
+                const outerAlpha = Math.min(1, globalAlpha * scale * 2 + 0.1);
+                ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${outerAlpha})`;
+            } else {
+                // Red/Scanning tint (same for both themes - red stands out)
+                const outerAlpha = Math.min(1, globalAlpha * scale * 2 + 0.1);
+                ctx.fillStyle = isDark ? `rgba(255, 100, 100, ${outerAlpha})` : `rgba(180, 50, 50, ${outerAlpha})`;
+            }
+            ctx.fill();
+        }
+    }
+
     ctx.globalAlpha = 1.0;
 }

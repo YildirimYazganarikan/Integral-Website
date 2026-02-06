@@ -29,13 +29,56 @@ export interface VisualizerSettings {
 
   // New Settings
   rotationSpeed?: number;       // For Sphere
-  breathingAmount?: number;     // Idle pulse size
+  breathingAmount?: number;     // Idle pulse size (legacy, use breathingAmplitude)
   breathingFrequency?: number;  // Idle pulse speed
   sizeSensitivity?: number;     // How much particle sizes react to audio
 
   // Particle fade settings
   particleFade?: number;        // 0-1: Amount of natural fade in/out for particles
   noiseScale?: number;          // 0-2: Scale of noise affecting fade timing
+
+  // === SQUID PARTICLE SETTINGS (SPHERICAL_PARTICLE) ===
+
+  // Global Visuals
+  baseSize?: number;            // Particle base size (0.5-8.0)
+  opacity?: number;             // Base opacity (0-1)
+
+  // Squid Skin Effect
+  squidSpeed?: number;          // Pulse speed (0-10)
+  squidAmplitude?: number;      // Pulse scale/size variation (0-5)
+  squidOpacityVar?: number;     // Pulse opacity variation (0-1)
+
+  // Breathing
+  breathingAmplitude?: number;  // Breath amplitude (0-100)
+
+  // Listening Mode
+  listeningTriggerSens?: number; // Spike trigger sensitivity (0.001-0.2)
+  listeningIntensity?: number;   // Spike intensity (0.1-2.0)
+
+  // Speaking Mode
+  speakingRate?: number;        // Voice oscillation rate (1-30)
+  speakingIntensity?: number;   // Voice amplitude (0.1-2.0)
+
+  // Searching Mode
+  searchingSpeed?: number;      // Search rotation speed (0.1-5.0)
+  searchingJitter?: number;     // Jitter amount (0-50)
+
+  // Outer Sphere (Searching)
+  enableOuterSphere?: number;   // 0 or 1 toggle
+  outerSphereRadius?: number;   // Radius of outer sphere (200-600)
+  outerSphereSpeed?: number;    // Rotation speed (1-20)
+  outerSphereDensity?: number;  // Particle density (0.05-0.5)
+
+  // === COLOR CUSTOMIZATION ===
+  particleColor?: string;       // Primary particle color (hex)
+  outerSphereColor?: string;    // Outer sphere particle color (hex)
+  useCustomColors?: number;     // 0 or 1 toggle for custom colors vs theme-based
+
+  // === CIRCLE_RADIUS SIGNAL SETTINGS ===
+  signalSpeed?: number;         // Speed of signal ring expansion (0.5-5)
+  signalMaxRadius?: number;     // Max distance signals travel (50-400)
+  signalCount?: number;         // Number of concurrent signals (1-6)
+  signalThickness?: number;     // Thickness of signal rings (1-8)
 }
 
 export interface VisualizerProfile {

@@ -566,7 +566,12 @@ const App: React.FC = () => {
                                         />
                                     ) : (
                                         <div className="flex items-center gap-3">
-                                            {getThemeIcon(p.type)}
+                                            <div className="relative">
+                                                {getThemeIcon(p.type)}
+                                                {hasUnsavedChanges(p.id) && (
+                                                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                                                )}
+                                            </div>
                                             <span className="text-sm font-medium truncate max-w-[100px]">{p.name}</span>
                                         </div>
                                     )}

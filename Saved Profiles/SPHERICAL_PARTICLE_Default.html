@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CircleOne</title>
+    <title>Sphere1</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: monospace; transition: background 0.3s, color 0.3s; }
         canvas { position: absolute; top: 0; left: 0; }
@@ -21,7 +21,7 @@
         <button class="mode-btn" data-mode="SPEAKING">Speaking</button>
         <button class="mode-btn" data-mode="SEARCHING">Searching</button>
     </div>
-    <script id="nora-profile-data" type="application/json">{"id":"1770410140118","name":"CircleOne","type":"SIMPLE_CIRCLE","settings":{"radius":140,"radiusSensitivity":0.5,"displacementSensitivity":0.6,"sizeSensitivity":1,"density":0.5,"thickness":2,"breathingAmount":13,"breathingFrequency":2,"particleFade":0,"noiseScale":1},"_filename":"CircleOne.html","_isDefault":false}</script>
+    <script id="nora-profile-data" type="application/json">{"id":"1770409897456","name":"Sphere1","type":"SPHERICAL_PARTICLE","settings":{"radius":61,"radiusSensitivity":0.7,"displacementSensitivity":0.1,"sizeSensitivity":0.2,"density":0.8,"thickness":2,"breathingAmount":15,"breathingFrequency":0.6,"particleFade":0.5,"noiseScale":2,"rotationSpeed":0.1}}</script>
     <script>
     const profile = JSON.parse(document.getElementById('nora-profile-data').textContent);
     const canvas = document.getElementById('canvas');

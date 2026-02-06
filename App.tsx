@@ -11,7 +11,7 @@ const DEFAULT_PROFILES: VisualizerProfile[] = [
         id: 'p1',
         name: 'Particle Flow',
         type: 'PARTICLE_CIRCLE',
-        settings: { radius: 100, radiusSensitivity: 1.0, displacementSensitivity: 1.0, density: 0.5, thickness: 2, breathingAmount: 5, breathingFrequency: 2 }
+        settings: { radius: 100, radiusSensitivity: 1.0, displacementSensitivity: 1.0, sizeSensitivity: 1.0, density: 0.5, thickness: 2, breathingAmount: 5, breathingFrequency: 2 }
     },
     {
         id: 'p2',
@@ -29,7 +29,7 @@ const DEFAULT_PROFILES: VisualizerProfile[] = [
         id: 'p4',
         name: 'Orbital Sphere',
         type: 'SPHERICAL_PARTICLE',
-        settings: { radius: 120, radiusSensitivity: 0.8, displacementSensitivity: 1.2, density: 0.6, thickness: 1, rotationSpeed: 1.0, breathingAmount: 5, breathingFrequency: 1 }
+        settings: { radius: 120, radiusSensitivity: 0.8, displacementSensitivity: 1.2, sizeSensitivity: 1.0, density: 0.6, thickness: 1, rotationSpeed: 1.0, breathingAmount: 5, breathingFrequency: 1 }
     }
 ];
 
@@ -86,6 +86,7 @@ const App: React.FC = () => {
                 radius: 100,
                 radiusSensitivity: 1,
                 displacementSensitivity: 1,
+                sizeSensitivity: 1,
                 density: 0.5,
                 thickness: 2,
                 rotationSpeed: type === 'SPHERICAL_PARTICLE' ? 1 : undefined,
@@ -460,6 +461,7 @@ const App: React.FC = () => {
     const showRadius = activeProfile.type !== 'STRAIGHT_LINE';
     const showRadiusSensitivity = activeProfile.type !== 'STRAIGHT_LINE';
     const showDisplacementSensitivity = true;
+    const showSizeSensitivity = ['PARTICLE_CIRCLE', 'SPHERICAL_PARTICLE'].includes(activeProfile.type);
     const showDensity = ['PARTICLE_CIRCLE', 'STRAIGHT_LINE', 'SPHERICAL_PARTICLE'].includes(activeProfile.type);
     const showThickness = ['STRAIGHT_LINE', 'SIMPLE_CIRCLE', 'CIRCLE_RADIUS'].includes(activeProfile.type);
     const showBreathing = ['PARTICLE_CIRCLE', 'SIMPLE_CIRCLE', 'CIRCLE_RADIUS', 'SPHERICAL_PARTICLE'].includes(activeProfile.type);
@@ -674,6 +676,18 @@ const App: React.FC = () => {
                                         type="range" min="0.0" max="5.0" step="0.1"
                                         value={activeProfile.settings.displacementSensitivity}
                                         onChange={(e) => updateSetting('displacementSensitivity', Number(e.target.value))}
+                                        className={`w-full h-1 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'bg-white/20 accent-white' : 'bg-black/20 accent-black'}`}
+                                    />
+                                </div>
+                            )}
+
+                            {showSizeSensitivity && (
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-xs font-mono opacity-70"><span>SIZE SENSITIVITY</span> <span>{(activeProfile.settings.sizeSensitivity || 1).toFixed(1)}</span></div>
+                                    <input
+                                        type="range" min="0.0" max="3.0" step="0.1"
+                                        value={activeProfile.settings.sizeSensitivity || 1}
+                                        onChange={(e) => updateSetting('sizeSensitivity', Number(e.target.value))}
                                         className={`w-full h-1 rounded-lg appearance-none cursor-pointer ${isDarkMode ? 'bg-white/20 accent-white' : 'bg-black/20 accent-black'}`}
                                     />
                                 </div>

@@ -159,17 +159,22 @@ function drawParticleCircle(
     const breathe = Math.sin(time * freq) * amount;
 
     const radiusExpansion = intensity * 40 * settings.radiusSensitivity;
+    const sizeSensitivity = settings.sizeSensitivity !== undefined ? settings.sizeSensitivity : 1.0;
 
     ctx.fillStyle = color;
 
-    // Precompute average frequency for smooth overall expansion
-    let avgFreq = 0;
+    // Precompute weighted average frequency (bass-heavy) for size pulsing
+    let weightedAvgFreq = 0;
     if (freqData && freqData.length > 0) {
-        let sum = 0;
+        let weightedSum = 0;
+        let totalWeight = 0;
         for (let i = 0; i < freqData.length; i++) {
-            sum += freqData[i];
+            // Weight bass frequencies (low indices) more heavily
+            const weight = 1 - (i / freqData.length) * 0.7; // Bass gets 1.0, highs get 0.3
+            weightedSum += freqData[i] * weight;
+            totalWeight += weight;
         }
-        avgFreq = sum / freqData.length / 255;
+        weightedAvgFreq = weightedSum / totalWeight / 255;
     }
 
     particles.forEach((p, idx) => {
@@ -180,11 +185,10 @@ function drawParticleCircle(
         const wave3 = Math.sin(p.angle * 5 + slowTime * 1.3) * 0.2;
         const organicNoise = (wave1 + wave2 + wave3) * settings.displacementSensitivity * 8;
 
-        // Even spectral displacement around the entire circle
+        // Even spectral displacement around the entire circle with frequency weighting
         let spectralDisplacement = 0;
         if (freqData && freqData.length > 0) {
             // Map angle to frequency bin evenly across the full circle
-            // Use multiple frequency samples and blend for smoother result
             const angleNorm = p.angle / (Math.PI * 2); // 0..1
 
             // Sample from frequency data with wrapping
@@ -198,19 +202,30 @@ function drawParticleCircle(
             const val2 = freqData[nextIdx] || 0;
             let val = val1 * (1 - blend) + val2 * blend;
 
-            // Soft noise gate with gradual falloff instead of hard cutoff
-            val = Math.max(0, val - 30) * 1.2;
+            // Apply frequency weighting - reduce high frequency impact
+            // High frequency bins (higher indices) have less effect on displacement
+            const freqWeight = 1 - (primaryIdx / freqLen) * 0.6; // Bass: 1.0, Treble: 0.4
+            val = val * freqWeight;
+
+            // Stronger noise gate - require minimum signal level to prevent low-level displacement
+            const noiseGateThreshold = 50;
+            if (val < noiseGateThreshold) {
+                val = 0;
+            } else {
+                // Gradual ramp after threshold
+                val = (val - noiseGateThreshold) * (255 / (255 - noiseGateThreshold));
+            }
 
             // Smooth displacement based on frequency
-            spectralDisplacement = (val / 255) * 50 * settings.displacementSensitivity;
+            spectralDisplacement = (val / 255) * 40 * settings.displacementSensitivity;
         }
 
-        // Particle size influenced by audio intensity
+        // Particle size influenced by audio intensity using SEPARATE sizeSensitivity
         let size = p.size;
-        // Base size increase from intensity
-        const sizeBoost = intensity * 3 * settings.displacementSensitivity;
-        // Additional pulsing based on average frequency
-        const sizePulse = avgFreq * 2;
+        // Size boost from overall intensity
+        const sizeBoost = intensity * 3 * sizeSensitivity;
+        // Additional pulsing based on weighted average frequency (bass-heavy)
+        const sizePulse = weightedAvgFreq * 3 * sizeSensitivity;
         size = Math.max(0.5, size + sizeBoost + sizePulse);
 
         // Combine all displacement components smoothly
@@ -435,7 +450,8 @@ function drawSphericalParticle(
         const x2d = centerX + x1 * scale;
         const y2d = centerY + y2 * scale;
 
-        const size = Math.max(0.5, (p.size * scale) + (intensity * 2));
+        const sizeSensitivity = settings.sizeSensitivity !== undefined ? settings.sizeSensitivity : 1.0;
+        const size = Math.max(0.5, (p.size * scale) + (intensity * 3 * sizeSensitivity));
         const alpha = Math.max(0.1, Math.min(1, scale * p.opacity));
 
         ctx.globalAlpha = alpha;

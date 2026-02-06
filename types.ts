@@ -26,11 +26,12 @@ export interface VisualizerSettings {
   displacementSensitivity: number; // How much particles/lines jitter or displace
   density: number;              // Particle count or Detail level
   thickness: number;            // Line width
-  
+
   // New Settings
   rotationSpeed?: number;       // For Sphere
   breathingAmount?: number;     // Idle pulse size
   breathingFrequency?: number;  // Idle pulse speed
+  sizeSensitivity?: number;     // How much particle sizes react to audio
 }
 
 export interface VisualizerProfile {

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLiveAgent } from './hooks/useLiveAgent';
+import { useSupabaseProfiles } from './hooks/useSupabaseProfiles';
 import { NoraVisualizer } from './components/NoraVisualizer';
 import { AgentMode, VisualizerProfile, ThemeType } from './types';
-import { Mic, MicOff, Settings, Plus, Trash2, Edit2, X, Sun, Moon, Circle, Activity, Aperture, Disc, Globe, Download, Upload, Save, Copy, Key } from 'lucide-react';
+import { Mic, MicOff, Settings, Plus, Trash2, Edit2, X, Sun, Moon, Circle, Activity, Aperture, Disc, Globe, Download, Upload, Save, Copy, Key, Loader2, Check, AlertCircle } from 'lucide-react';
 
 const DEFAULT_API_KEY = 'AIzaSyCz3XxWf-iWU0VzuawBiBZTiTQ40QGW7pA';
 
@@ -64,6 +65,18 @@ const App: React.FC = () => {
     // Customization State
     const [previewMode, setPreviewMode] = useState<AgentMode | null>(null);
     const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+
+    // Supabase Integration
+    const supabase = useSupabaseProfiles();
+    const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    const [showSaveAsDialog, setShowSaveAsDialog] = useState(false);
+    const [saveAsName, setSaveAsName] = useState('');
+
+    // Show notification helper
+    const showNotification = (type: 'success' | 'error', message: string) => {
+        setNotification({ type, message });
+        setTimeout(() => setNotification(null), 3000);
+    };
 
     const activeProfile = profiles.find(p => p.id === activeProfileId) || profiles[0];
 
@@ -604,44 +617,96 @@ const App: React.FC = () => {
                         <button onClick={() => setShowSettings(false)}><X size={24} /></button>
                     </div>
 
-                    {/* Project Actions (Future Supabase Integration) */}
+                    {/* Project Actions */}
                     <div className="space-y-3">
                         <div className="flex justify-between items-end border-b pb-2 border-current opacity-50">
-                            <span className="text-xs font-bold uppercase tracking-wider">Project Actions</span>
+                            <span className="text-xs font-bold uppercase tracking-wider">Cloud Storage</span>
+                            {!supabase.isConfigured && (
+                                <span className="text-xs opacity-50">Not configured</span>
+                            )}
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <button
-                                disabled
-                                className={`py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded opacity-40 cursor-not-allowed ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
-                                title="Coming soon with Supabase"
+                                disabled={!supabase.isConfigured || supabase.isLoading}
+                                onClick={async () => {
+                                    const id = await supabase.saveProfile(activeProfile);
+                                    if (id) {
+                                        showNotification('success', 'Profile saved!');
+                                    } else {
+                                        showNotification('error', supabase.error || 'Failed to save');
+                                    }
+                                }}
+                                className={`py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded transition-all ${supabase.isConfigured
+                                    ? `${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`
+                                    : 'opacity-40 cursor-not-allowed'
+                                    } ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
+                                title={supabase.isConfigured ? 'Save profile to cloud' : 'Configure Supabase to enable'}
                             >
+                                {supabase.isLoading ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                                 Save
                             </button>
                             <button
-                                disabled
-                                className={`py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded opacity-40 cursor-not-allowed ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
-                                title="Coming soon with Supabase"
+                                disabled={!supabase.isConfigured || supabase.isLoading}
+                                onClick={() => {
+                                    setSaveAsName(activeProfile.name + ' Copy');
+                                    setShowSaveAsDialog(true);
+                                }}
+                                className={`py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded transition-all ${supabase.isConfigured
+                                    ? `${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`
+                                    : 'opacity-40 cursor-not-allowed'
+                                    } ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
+                                title={supabase.isConfigured ? 'Save as new profile' : 'Configure Supabase to enable'}
                             >
+                                <Copy size={14} />
                                 Save As
                             </button>
                             <button
-                                disabled
-                                className={`py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded opacity-40 cursor-not-allowed ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
-                                title="Coming soon with Supabase"
+                                disabled={!supabase.isConfigured || supabase.isLoading}
+                                onClick={async () => {
+                                    const reloaded = await supabase.reloadProfile(activeProfile.id);
+                                    if (reloaded) {
+                                        setProfiles(profiles.map(p => p.id === reloaded.id ? reloaded : p));
+                                        showNotification('success', 'Changes discarded');
+                                    } else {
+                                        showNotification('error', 'Profile not saved to cloud yet');
+                                    }
+                                }}
+                                className={`py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded transition-all ${supabase.isConfigured
+                                    ? `${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`
+                                    : 'opacity-40 cursor-not-allowed'
+                                    } ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
+                                title={supabase.isConfigured ? 'Reload from cloud (discard changes)' : 'Configure Supabase to enable'}
                             >
+                                <X size={14} />
                                 Ignore Edits
                             </button>
                             <button
-                                disabled
-                                className={`col-span-2 py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded opacity-40 cursor-not-allowed ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
-                                title="Coming soon with Supabase"
+                                disabled={!supabase.isConfigured || supabase.isLoading}
+                                onClick={async () => {
+                                    // First save the profile, then set as default
+                                    await supabase.saveProfile(activeProfile);
+                                    const success = await supabase.setDefaultTemplate(activeProfile.type, activeProfile.id);
+                                    if (success) {
+                                        showNotification('success', `Set as default for ${activeProfile.type.replace(/_/g, ' ')}`);
+                                    } else {
+                                        showNotification('error', supabase.error || 'Failed to set default');
+                                    }
+                                }}
+                                className={`py-2 flex items-center justify-center gap-2 text-xs uppercase border rounded transition-all ${supabase.isConfigured
+                                    ? `${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'}`
+                                    : 'opacity-40 cursor-not-allowed'
+                                    } ${isDarkMode ? 'border-white/20' : 'border-black/20'}`}
+                                title={supabase.isConfigured ? 'Set as default template for this type' : 'Configure Supabase to enable'}
                             >
-                                Set as Default for {activeProfile.type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                                <Check size={14} />
+                                Set Default
                             </button>
                         </div>
-                        <p className={`text-xs opacity-40 italic ${isDarkMode ? 'text-white' : 'text-black'}`}>
-                            Server features coming soon with Supabase
-                        </p>
+                        {!supabase.isConfigured && (
+                            <p className={`text-xs opacity-40 italic ${isDarkMode ? 'text-white' : 'text-black'}`}>
+                                Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local
+                            </p>
+                        )}
                     </div>
 
                     {/* Import/Export */}
@@ -877,8 +942,61 @@ const App: React.FC = () => {
                 </div>
             )}
 
+            {/* Save As Dialog */}
+            {showSaveAsDialog && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className={`p-6 rounded-lg shadow-xl max-w-sm w-full mx-4 ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
+                        <h3 className="text-lg font-bold mb-4">Save Profile As</h3>
+                        <input
+                            type="text"
+                            value={saveAsName}
+                            onChange={(e) => setSaveAsName(e.target.value)}
+                            placeholder="Profile name"
+                            className={`w-full p-2 rounded border mb-4 ${isDarkMode ? 'bg-black border-white/20' : 'bg-white border-black/20'}`}
+                            autoFocus
+                        />
+                        <div className="flex gap-2 justify-end">
+                            <button
+                                onClick={() => setShowSaveAsDialog(false)}
+                                className={`px-4 py-2 rounded ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-black/10'}`}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    const newId = await supabase.saveProfileAs(activeProfile, saveAsName);
+                                    if (newId) {
+                                        const newProfile = { ...activeProfile, id: newId, name: saveAsName };
+                                        setProfiles([...profiles, newProfile]);
+                                        setActiveProfileId(newId);
+                                        showNotification('success', 'Profile saved!');
+                                    } else {
+                                        showNotification('error', supabase.error || 'Failed to save');
+                                    }
+                                    setShowSaveAsDialog(false);
+                                }}
+                                disabled={!saveAsName.trim() || supabase.isLoading}
+                                className={`px-4 py-2 rounded ${isDarkMode ? 'bg-white text-black hover:bg-gray-200' : 'bg-black text-white hover:bg-gray-800'}`}
+                            >
+                                {supabase.isLoading ? 'Saving...' : 'Save'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Notification Toast */}
+            {notification && (
+                <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-50 ${notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                    }`}>
+                    {notification.type === 'success' ? <Check size={16} /> : <AlertCircle size={16} />}
+                    {notification.message}
+                </div>
+            )}
+
         </div>
     );
 };
 
 export default App;
+

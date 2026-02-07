@@ -56,7 +56,7 @@ const MiniVisualizer: React.FC<{ type: ThemeType; isHovered: boolean }> = ({ typ
 
             const centerX = w / 2;
             const centerY = h / 2;
-            const baseRadius = Math.min(w, h) * 0.25;
+            const baseRadius = Math.min(w, h) * 0.10;
 
             switch (type) {
                 case 'PARTICLE_CIRCLE': {

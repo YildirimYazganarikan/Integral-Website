@@ -79,7 +79,7 @@
         </div>
     </div>
     
-    <script id="nora-profile-data" type="application/json">{"id":"1770410140118","name":"CircleOne","type":"SIMPLE_CIRCLE","settings":{"radius":141,"radiusSensitivity":0.7,"displacementSensitivity":0.6,"sizeSensitivity":1,"density":0.5,"thickness":2,"breathingAmount":14,"breathingFrequency":1.1,"particleFade":0,"noiseScale":1,"speakingIntensity":0.35,"speakingRate":8},"_filename":"CircleOne.html","_isDefault":false}</script>
+    <script id="nora-profile-data" type="application/json">{"id":"1770466623284","name":"CircleOne","type":"SIMPLE_CIRCLE","settings":{"radius":141,"radiusSensitivity":0.7,"displacementSensitivity":0.6,"sizeSensitivity":1,"density":0.5,"thickness":2,"breathingAmount":14,"breathingFrequency":1.1,"particleFade":0,"noiseScale":1,"speakingIntensity":0.35,"speakingRate":8}}</script>
     <script>
     const profile = JSON.parse(document.getElementById('nora-profile-data').textContent);
     const canvas = document.getElementById('canvas');
@@ -163,7 +163,9 @@
                 size: Math.random() * 2 + 1,
                 opacity: Math.random() * 0.5 + 0.5,
                 theta: Math.random() * 2 * Math.PI,
-                phi: Math.acos(2 * Math.random() - 1)
+                phi: Math.acos(2 * Math.random() - 1),
+                sizeMultiplier: 0.3 + Math.random() * 1.4,
+                displacementMultiplier: 0.5 + Math.random()
             });
         }
         animate();
@@ -182,32 +184,67 @@
         const freq = settings.breathingFrequency || 2;
         const amount = settings.breathingAmount || 5;
         const breathe = Math.sin(time * freq) * amount;
-        const radiusExpansion = intensity * 40 * settings.radiusSensitivity;
-        const displacementScale = intensity * 20 * settings.displacementSensitivity;
+        const radiusExpansion = intensity * 40 * (settings.radiusSensitivity ?? 1);
+        const displacementScale = intensity * 20 * (settings.displacementSensitivity ?? 1);
 
         ctx.fillStyle = color;
-        particles.forEach(p => {
+        particles.forEach((p, idx) => {
             const noise = Math.sin(p.angle * 10 + time * 5) * Math.cos(p.angle * 5 - time * 2);
             
             let spectralDisplacement = 0;
             if (intensity > 0.05) {
                 const spike = Math.abs(Math.sin(p.angle * 8 + time * 2));
-                spectralDisplacement = spike * intensity * 80 * settings.displacementSensitivity;
+                spectralDisplacement = spike * intensity * 80 * (settings.displacementSensitivity ?? 1);
             }
 
             let size = p.size;
-            if (intensity > 0.1) size += (intensity * 2 * settings.displacementSensitivity);
-            const dynamicR = baseRadius + breathe + radiusExpansion + spectralDisplacement + (noise * displacementScale);
+            const sizeMultiplier = p.sizeMultiplier ?? 1;
+            
+            let dynamicR = baseRadius + breathe + radiusExpansion + spectralDisplacement + (noise * displacementScale);
             let x = centerX + Math.cos(p.angle) * dynamicR;
             let y = centerY + Math.sin(p.angle) * dynamicR;
             
-            if (mode === 'SEARCHING') {
-                const orbitSpeed = time * 4;
-                x = centerX + Math.cos(p.angle + orbitSpeed) * (baseRadius + Math.sin(time*5)*10);
-                y = centerY + Math.sin(p.angle + orbitSpeed) * (baseRadius + Math.sin(time*5)*10);
+            // === LISTENING MODE ===
+            if (mode === 'LISTENING' && intensity > 0.01) {
+                const listeningIntensity = settings.listeningIntensity ?? 1.0;
+                const listeningRate = settings.listeningRate ?? 8;
+                const listeningSizeBoost = settings.listeningSizeBoost ?? 2.0;
+
+                const voiceWave = Math.sin(time * listeningRate + p.angle * 3) * intensity * 15 * listeningIntensity;
+                dynamicR = baseRadius + breathe + radiusExpansion + spectralDisplacement + voiceWave;
+                x = centerX + Math.cos(p.angle) * dynamicR;
+                y = centerY + Math.sin(p.angle) * dynamicR;
+                
+                size = p.size * (1 + intensity * listeningSizeBoost * sizeMultiplier);
             }
+            
+            // === SPEAKING MODE ===
+            if (mode === 'SPEAKING') {
+                const speakingRate = settings.speakingRate ?? 12;
+                const speakingIntensity = settings.speakingIntensity ?? 0.5;
+                const speakingSizeBoost = settings.speakingSizeBoost ?? 3.0;
+
+                const oscillation = Math.sin(time * speakingRate) * 0.3;
+                const audioPulse = (intensity + oscillation) * 40 * speakingIntensity;
+
+                dynamicR = baseRadius + breathe + audioPulse;
+                x = centerX + Math.cos(p.angle) * dynamicR;
+                y = centerY + Math.sin(p.angle) * dynamicR;
+
+                size = p.size * (1 + intensity * speakingSizeBoost * sizeMultiplier);
+            }
+            
+            // === SEARCHING MODE ===
+            if (mode === 'SEARCHING') {
+                const orbitSpeed = time * 2;
+                const pulse = Math.sin(time * 3) * 8;
+                x = centerX + Math.cos(p.angle + orbitSpeed) * (baseRadius + pulse);
+                y = centerY + Math.sin(p.angle + orbitSpeed) * (baseRadius + pulse);
+                size = p.size * 0.8;
+            }
+            
             ctx.beginPath();
-            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.arc(x, y, Math.max(0.5, size), 0, Math.PI * 2);
             ctx.globalAlpha = p.opacity;
             ctx.fill();
         });
@@ -277,13 +314,30 @@
         const freq = settings.breathingFrequency || 1.5;
         const amount = settings.breathingAmount || 5;
         const breathe = Math.sin(time * freq) * amount;
-        const r = baseR + breathe + (intensity * 60 * settings.radiusSensitivity);
+        let r = baseR + breathe + (intensity * 60 * (settings.radiusSensitivity ?? 1));
 
-        if (mode === 'SEARCHING') {
+        // === LISTENING MODE: Expanding ring animation ===
+        if (mode === 'LISTENING' && intensity > 0.05) {
+            const listeningRate = settings.listeningRate ?? 8;
+            const listeningIntensity = settings.listeningIntensity ?? 1.0;
+            const innerPulse = Math.sin(time * listeningRate) * intensity * 20 * listeningIntensity;
+            
             ctx.beginPath();
             ctx.strokeStyle = secColor;
             ctx.lineWidth = 2;
-            ctx.arc(centerX, centerY, baseR + Math.sin(time*10)*5 + 30, time*5, time*5 + Math.PI*1.5);
+            ctx.arc(centerX, centerY, Math.max(5, r * 0.5 + innerPulse), 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // === SEARCHING MODE ===
+        if (mode === 'SEARCHING') {
+            r = baseR + Math.sin(time * 10) * 5;
+            ctx.beginPath();
+            ctx.strokeStyle = secColor;
+            ctx.lineWidth = 2;
+            const startAngle = time * 5;
+            const endAngle = startAngle + Math.PI * 1.5;
+            ctx.arc(centerX, centerY, r + 30, startAngle, endAngle);
             ctx.stroke();
         }
 
@@ -295,10 +349,17 @@
         ctx.fill();
         ctx.stroke();
 
-        if (intensity > 0.05) {
+        // Inner filled circle - only in Speaking mode (pulsing)
+        if (mode === 'SPEAKING') {
+            const speakingRate = settings.speakingRate ?? 16;
+            const speakingIntensity = settings.speakingIntensity ?? 0.5;
+            const pulse = (Math.sin(time * speakingRate) + 1) * 0.5;
+            const baseInnerR = r * 0.3;
+            const innerR = Math.min(r * 0.9, baseInnerR + r * 0.4 * pulse * speakingIntensity);
+
             ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.arc(centerX, centerY, Math.min(r, r * intensity * 0.8 * settings.displacementSensitivity), 0, Math.PI * 2);
+            ctx.arc(centerX, centerY, innerR, 0, Math.PI * 2);
             ctx.fill();
         }
     }
@@ -337,7 +398,7 @@
     function drawSphericalParticle(w, h, time, intensity, settings, color, secColor) {
         const centerX = w / 2;
         const centerY = h / 2;
-        const baseRadius = Math.min(w, h) * (settings.radius / 800) * 2;
+        const baseRadius = settings.radius ?? 160; // Use settings.radius directly like main app
         const rotMult = settings.rotationSpeed !== undefined ? settings.rotationSpeed : 1.0;
         let rotSpeedX = (mode === 'SEARCHING' ? 2.0 : 0.5) * rotMult;
         let rotSpeedY = (mode === 'SEARCHING' ? 3.0 : 0.8) * rotMult;
@@ -346,7 +407,7 @@
         const amount = settings.breathingAmount || 5;
         const breathe = Math.sin(time * freq) * amount;
         
-        let currentRadius = baseRadius + (intensity * 50 * settings.radiusSensitivity) + breathe;
+        let currentRadius = baseRadius + (intensity * 40) + breathe;
         if (mode === 'SEARCHING') {
             currentRadius = baseRadius + Math.sin(time * 3) * 15 + Math.cos(time * 2.3) * 10;
         }
@@ -382,14 +443,53 @@
              ctx.beginPath();
              ctx.arc(centerX + x1 * scale, centerY + y2 * scale, Math.max(0.5, particleSize), 0, Math.PI * 2);
              ctx.fill();
-        });
+         });
         ctx.globalAlpha = 1;
+        
+        // === OUTER SPHERE (SEARCHING MODE ONLY) ===
+        const enableOuterSphere = settings.enableOuterSphere ?? 0;
+        if (enableOuterSphere > 0.5 && mode === 'SEARCHING') {
+            const outerRadius = settings.outerSphereRadius ?? 300;
+            const outerSpeed = settings.outerSphereSpeed ?? 8;
+            const outerDensity = settings.outerSphereDensity ?? 0.2;
+            const outerColor = isDark ? (settings.outerSphereColorDark ?? '#ff6464') : (settings.outerSphereColorLight ?? '#cc4444');
+            
+            ctx.fillStyle = outerColor;
+            const outerCount = Math.floor(50 * outerDensity);
+            
+            for (let i = 0; i < outerCount; i++) {
+                const phi = Math.acos(2 * (i / outerCount) - 1);
+                const theta = 2 * Math.PI * i * 0.618033;
+                
+                const r = outerRadius + Math.sin(time * outerSpeed * 0.5 + i) * 10;
+                
+                let x = r * Math.sin(phi) * Math.cos(theta);
+                let y = r * Math.sin(phi) * Math.sin(theta);
+                let z = r * Math.cos(phi);
+                
+                const rotX = time * rotSpeedX * 0.5;
+                const rotY = time * rotSpeedY * 0.5;
+                
+                let x1 = x * Math.cos(rotY) - z * Math.sin(rotY);
+                let z1 = z * Math.cos(rotY) + x * Math.sin(rotY);
+                let y2 = y * Math.cos(rotX) - z1 * Math.sin(rotX);
+                let z2 = z1 * Math.cos(rotX) + y * Math.sin(rotX);
+                
+                const scale = 400 / (400 + z2);
+                ctx.globalAlpha = Math.max(0.1, scale * 0.5);
+                ctx.beginPath();
+                ctx.arc(centerX + x1 * scale, centerY + y2 * scale, Math.max(1, 2 * scale), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
     }
 
     function animate() {
         if (mode === 'LISTENING') {
-            if (Math.random() > 0.95) simInput = Math.random();
-            simInput *= 0.9;
+            // More active simulation for user voice - oscillating pattern
+            simInput = (Math.sin(time * 8) + 1) * 0.25 + (Math.sin(time * 13) + 1) * 0.15;
+            if (Math.random() > 0.7) simInput += Math.random() * 0.3;
             simOutput = 0;
         } else if (mode === 'SPEAKING') {
             simInput = 0;
@@ -399,7 +499,7 @@
             simOutput = 0;
         }
         let target = mode === 'LISTENING' ? simInput : (mode === 'SPEAKING' ? simOutput : 0.2);
-        intensity += (target - intensity) * 0.1;
+        intensity += (target - intensity) * 0.15;
         time += 0.02;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);

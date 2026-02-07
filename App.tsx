@@ -13,6 +13,7 @@ import { ApiKeySettings } from './components/ApiKeySettings';
 import { LocalStorageSection } from './components/LocalStorageSection';
 import { ImportExportButtons } from './components/ImportExportButtons';
 import { Notification } from './components/ui/Notification';
+import { WelcomeScreen } from './components/WelcomeScreen';
 import { AgentMode, ThemeType } from './types';
 import { Loader2, X, Circle, Activity, Aperture, Disc, Globe, Sun, Moon } from 'lucide-react';
 
@@ -42,6 +43,7 @@ const App: React.FC = () => {
     } = useProfiles(showNotification);
 
     // Local UI state
+    const [showWelcome, setShowWelcome] = useState(true);
     const [isDarkMode, setIsDarkMode] = useState(true);
     const [showSettings, setShowSettings] = useState(false);
     const [previewMode, setPreviewMode] = useState<AgentMode | null>(null);
@@ -157,6 +159,11 @@ const App: React.FC = () => {
             case 'SPHERICAL_PARTICLE': return <Globe size={16} />;
         }
     };
+
+    // Welcome screen
+    if (showWelcome) {
+        return <WelcomeScreen onEnterStudio={() => setShowWelcome(false)} />;
+    }
 
     // Loading state
     if (isLoading) {

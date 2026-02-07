@@ -42,7 +42,7 @@ const App: React.FC = () => {
     } = useProfiles(showNotification);
 
     // Local UI state
-    const [isDarkMode, setIsDarkMode] = useState(false);
+    const [isDarkMode, setIsDarkMode] = useState(true);
     const [showSettings, setShowSettings] = useState(false);
     const [previewMode, setPreviewMode] = useState<AgentMode | null>(null);
     const [previewCountdown, setPreviewCountdown] = useState<number>(0);
@@ -235,8 +235,8 @@ const App: React.FC = () => {
                                 <button
                                     onClick={() => setPreviewMode(previewMode === AgentMode[mode] ? null : AgentMode[mode])}
                                     className={`px-3 py-1 text-[10px] font-mono uppercase tracking-wider rounded transition-all ${isActive || isCurrentAIMode
-                                            ? (isDarkMode ? 'bg-white text-black' : 'bg-black text-white')
-                                            : (isDarkMode ? 'bg-white/10 text-white/50 hover:bg-white/20' : 'bg-black/10 text-black/50 hover:bg-black/20')
+                                        ? (isDarkMode ? 'bg-white text-black' : 'bg-black text-white')
+                                        : (isDarkMode ? 'bg-white/10 text-white/50 hover:bg-white/20' : 'bg-black/10 text-black/50 hover:bg-black/20')
                                         }`}
                                 >
                                     {mode.charAt(0)}

@@ -4,24 +4,82 @@
     <meta charset="UTF-8">
     <title>PartiCir</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: monospace; transition: background 0.3s, color 0.3s; }
+        * { box-sizing: border-box; }
+        body { margin: 0; overflow: hidden; background: #000; color: #fff; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; transition: background 0.3s, color 0.3s; }
+        body.light { background: #fff; color: #000; }
         canvas { position: absolute; top: 0; left: 0; }
-        #controls { position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: center; gap: 10px; z-index: 10; }
-        button { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; opacity: 0.5; transition: all 0.3s; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
-        button:hover { opacity: 0.8; }
-        #theme-btn { position: absolute; top: 12px; right: 12px; z-index: 10; opacity: 0.3; font-size: 12px; padding: 4px 8px; border-radius: 12px; background: transparent; border: none; }
-        #theme-btn:hover { opacity: 0.6; }
+        
+        /* Top controls container */
+        .top-controls { position: absolute; top: 16px; left: 0; right: 0; display: flex; justify-content: center; align-items: center; z-index: 10; gap: 24px; }
+        
+        /* Mode buttons */
+        .mode-buttons { display: flex; gap: 8px; }
+        .mode-btn { 
+            padding: 6px 12px; 
+            font-size: 10px; 
+            font-family: inherit;
+            font-weight: 400;
+            text-transform: uppercase; 
+            letter-spacing: 0.1em;
+            border-radius: 4px; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            border: none;
+        }
+        .mode-btn.dark { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
+        .mode-btn.dark:hover { background: rgba(255,255,255,0.2); }
+        .mode-btn.dark.active { background: #fff; color: #000; }
+        .mode-btn.light { background: rgba(0,0,0,0.1); color: rgba(0,0,0,0.5); }
+        .mode-btn.light:hover { background: rgba(0,0,0,0.15); }
+        .mode-btn.light.active { background: #000; color: #fff; }
+        
+        /* Theme toggle (matching main app) */
+        .theme-toggle { 
+            display: flex; 
+            gap: 2px; 
+            padding: 4px;
+            border-radius: 8px;
+        }
+        .theme-toggle.dark { background: rgba(255,255,255,0.1); }
+        .theme-toggle.light { background: rgba(0,0,0,0.1); }
+        .theme-btn-half {
+            width: 28px;
+            height: 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 12px;
+            background: transparent;
+        }
+        .theme-btn-half.dark { color: rgba(255,255,255,0.4); }
+        .theme-btn-half.dark:hover { color: rgba(255,255,255,0.7); }
+        .theme-btn-half.dark.active { background: #fff; color: #000; }
+        .theme-btn-half.light { color: rgba(0,0,0,0.4); }
+        .theme-btn-half.light:hover { color: rgba(0,0,0,0.7); }
+        .theme-btn-half.light.active { background: #000; color: #fff; }
     </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
-    <button id="theme-btn">☀️</button>
-    <div id="controls">
-        <button class="mode-btn" data-mode="LISTENING" style="opacity:1">Listening</button>
-        <button class="mode-btn" data-mode="SPEAKING">Speaking</button>
-        <button class="mode-btn" data-mode="SEARCHING">Searching</button>
+    
+    <!-- Top controls -->
+    <div class="top-controls">
+        <div class="mode-buttons">
+            <button class="mode-btn dark active" data-mode="LISTENING">L</button>
+            <button class="mode-btn dark" data-mode="SPEAKING">S</button>
+            <button class="mode-btn dark" data-mode="SEARCHING">S</button>
+        </div>
+        <div class="theme-toggle dark">
+            <button class="theme-btn-half dark" data-theme="light" title="Light mode">☀</button>
+            <button class="theme-btn-half dark active" data-theme="dark" title="Dark mode">●</button>
+        </div>
     </div>
-    <script id="nora-profile-data" type="application/json">{"id":"1770414343349","name":"PartiCir","type":"PARTICLE_CIRCLE","settings":{"radius":213,"radiusSensitivity":0,"displacementSensitivity":0.5,"sizeSensitivity":1.5,"density":0.1,"thickness":2,"breathingAmount":20,"breathingFrequency":1.1,"particleFade":0.65,"noiseScale":1}}</script>
+    
+    <script id="nora-profile-data" type="application/json">{"id":"1770414343349","name":"PartiCir","type":"PARTICLE_CIRCLE","settings":{"radius":176,"radiusSensitivity":2.3,"displacementSensitivity":0,"sizeSensitivity":1,"density":0.1,"thickness":2,"breathingAmount":13,"breathingFrequency":1.9,"particleFade":0.05,"noiseScale":1.2,"speakingRate":5,"speakingIntensity":0.6,"speakingSizeBoost":1.5,"listeningRate":7,"listeningIntensity":1.3},"_filename":"PartiCir.html","_isDefault":false}</script>
     <script>
     const profile = JSON.parse(document.getElementById('nora-profile-data').textContent);
     const canvas = document.getElementById('canvas');
@@ -52,32 +110,44 @@
     }
 
     function updateTheme() {
-        document.body.style.background = isDark ? '#000' : '#fff';
-        document.body.style.color = isDark ? '#fff' : '#000';
-        document.querySelectorAll('button').forEach(btn => {
-            btn.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-            btn.style.borderColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
-            btn.style.color = isDark ? 'white' : 'black';
+        document.body.classList.toggle('light', !isDark);
+        
+        // Update all buttons with theme class
+        document.querySelectorAll('.mode-btn, .theme-btn-half').forEach(btn => {
+            btn.classList.remove('dark', 'light');
+            btn.classList.add(isDark ? 'dark' : 'light');
         });
-        const themeBtn = document.getElementById('theme-btn');
-        if (themeBtn) themeBtn.textContent = isDark ? '☀️' : '🌙';
+        document.querySelectorAll('.theme-toggle').forEach(el => {
+            el.classList.remove('dark', 'light');
+            el.classList.add(isDark ? 'dark' : 'light');
+        });
+        
+        // Update theme button active states
+        document.querySelectorAll('.theme-btn-half').forEach(btn => {
+            const isThisTheme = (btn.dataset.theme === 'dark') === isDark;
+            btn.classList.toggle('active', isThisTheme);
+        });
     }
 
     function init() {
         resize();
         window.addEventListener('resize', resize);
         
+        // Mode button handlers
         document.querySelectorAll('.mode-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 mode = e.target.dataset.mode;
-                document.querySelectorAll('.mode-btn').forEach(b => b.style.opacity = '0.5');
-                e.target.style.opacity = '1';
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
             });
         });
 
-        document.getElementById('theme-btn').addEventListener('click', () => {
-            isDark = !isDark;
-            updateTheme();
+        // Theme toggle handlers
+        document.querySelectorAll('.theme-btn-half').forEach(btn => {
+            btn.addEventListener('click', () => {
+                isDark = btn.dataset.theme === 'dark';
+                updateTheme();
+            });
         });
 
         const settings = profile.settings;
@@ -145,23 +215,56 @@
     }
     
     function drawStraightLine(w, h, time, intensity, settings, color, secColor) {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = settings.thickness;
         ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
         const centerY = h / 2;
         const points = Math.floor(10 + settings.density * 190);
         const spacing = w / points;
         const amplitude = 50 * intensity * settings.displacementSensitivity;
 
+        // === USER LINE (GRAY/LIGHTER) - Active in LISTENING mode ===
         ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = settings.thickness;
+        
         for (let i = 0; i <= points; i++) {
             const x = i * spacing;
-            let offset = Math.sin(i * 0.1 + time) * 5;
-            if (intensity > 0.001) {
-                const edge = Math.sin((i / points) * Math.PI);
-                offset += (Math.sin(i * 0.2 + time * 10) + Math.cos(i * 0.5 - time * 8)) * amplitude * edge;
+            let offset = Math.sin(i * 0.1 + time) * 3;
+            
+            if (mode === 'LISTENING' && intensity > 0.001) {
+                const edgeFactor = Math.sin((i / points) * Math.PI);
+                const wave1 = Math.sin(i * 0.2 + time * 10);
+                const wave2 = Math.cos(i * 0.5 - time * 8);
+                offset += (wave1 + wave2) * amplitude * edgeFactor;
             }
-            if (mode === 'SEARCHING') offset = Math.sin(i * 0.2 - time * 10) * 20 * Math.sin((i/points) * Math.PI);
+            
+            if (mode === 'SEARCHING') {
+                offset = Math.sin(i * 0.2 - time * 10) * 15 * Math.sin((i / points) * Math.PI);
+            }
+            
+            i === 0 ? ctx.moveTo(x, centerY + offset) : ctx.lineTo(x, centerY + offset);
+        }
+        ctx.stroke();
+
+        // === AI LINE (DARKER) - Active in SPEAKING mode ===
+        ctx.beginPath();
+        ctx.strokeStyle = secColor;
+        ctx.lineWidth = settings.thickness * 0.8;
+        
+        const aiAmplitude = mode === 'SPEAKING' ? 40 * settings.displacementSensitivity : 5;
+        const aiSpeed = mode === 'SPEAKING' ? 12 : 2;
+        
+        for (let i = 0; i <= points; i++) {
+            const x = i * spacing;
+            const edgeFactor = Math.sin((i / points) * Math.PI);
+            const wave1 = Math.sin(i * 0.15 + time * aiSpeed);
+            const wave2 = Math.cos(i * 0.4 - time * aiSpeed * 0.8);
+            let offset = (wave1 + wave2) * aiAmplitude * edgeFactor * -1;
+            
+            if (mode === 'SEARCHING') {
+                offset = Math.cos(i * 0.2 + time * 8) * 10 * edgeFactor;
+            }
+            
             i === 0 ? ctx.moveTo(x, centerY + offset) : ctx.lineTo(x, centerY + offset);
         }
         ctx.stroke();
@@ -234,7 +337,7 @@
     function drawSphericalParticle(w, h, time, intensity, settings, color, secColor) {
         const centerX = w / 2;
         const centerY = h / 2;
-        const baseRadius = Math.min(w, h) * (settings.radius / 800) * 2;
+        const baseRadius = settings.radius ?? 160; // Use settings.radius directly like main app
         const rotMult = settings.rotationSpeed !== undefined ? settings.rotationSpeed : 1.0;
         let rotSpeedX = (mode === 'SEARCHING' ? 2.0 : 0.5) * rotMult;
         let rotSpeedY = (mode === 'SEARCHING' ? 3.0 : 0.8) * rotMult;
@@ -243,7 +346,7 @@
         const amount = settings.breathingAmount || 5;
         const breathe = Math.sin(time * freq) * amount;
         
-        let currentRadius = baseRadius + (intensity * 50 * settings.radiusSensitivity) + breathe;
+        let currentRadius = baseRadius + (intensity * 40) + breathe;
         if (mode === 'SEARCHING') {
             currentRadius = baseRadius + Math.sin(time * 3) * 15 + Math.cos(time * 2.3) * 10;
         }
@@ -279,14 +382,53 @@
              ctx.beginPath();
              ctx.arc(centerX + x1 * scale, centerY + y2 * scale, Math.max(0.5, particleSize), 0, Math.PI * 2);
              ctx.fill();
-        });
+         });
         ctx.globalAlpha = 1;
+        
+        // === OUTER SPHERE (SEARCHING MODE ONLY) ===
+        const enableOuterSphere = settings.enableOuterSphere ?? 0;
+        if (enableOuterSphere > 0.5 && mode === 'SEARCHING') {
+            const outerRadius = settings.outerSphereRadius ?? 300;
+            const outerSpeed = settings.outerSphereSpeed ?? 8;
+            const outerDensity = settings.outerSphereDensity ?? 0.2;
+            const outerColor = isDark ? (settings.outerSphereColorDark ?? '#ff6464') : (settings.outerSphereColorLight ?? '#cc4444');
+            
+            ctx.fillStyle = outerColor;
+            const outerCount = Math.floor(50 * outerDensity);
+            
+            for (let i = 0; i < outerCount; i++) {
+                const phi = Math.acos(2 * (i / outerCount) - 1);
+                const theta = 2 * Math.PI * i * 0.618033;
+                
+                const r = outerRadius + Math.sin(time * outerSpeed * 0.5 + i) * 10;
+                
+                let x = r * Math.sin(phi) * Math.cos(theta);
+                let y = r * Math.sin(phi) * Math.sin(theta);
+                let z = r * Math.cos(phi);
+                
+                const rotX = time * rotSpeedX * 0.5;
+                const rotY = time * rotSpeedY * 0.5;
+                
+                let x1 = x * Math.cos(rotY) - z * Math.sin(rotY);
+                let z1 = z * Math.cos(rotY) + x * Math.sin(rotY);
+                let y2 = y * Math.cos(rotX) - z1 * Math.sin(rotX);
+                let z2 = z1 * Math.cos(rotX) + y * Math.sin(rotX);
+                
+                const scale = 400 / (400 + z2);
+                ctx.globalAlpha = Math.max(0.1, scale * 0.5);
+                ctx.beginPath();
+                ctx.arc(centerX + x1 * scale, centerY + y2 * scale, Math.max(1, 2 * scale), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
     }
 
     function animate() {
         if (mode === 'LISTENING') {
-            if (Math.random() > 0.95) simInput = Math.random();
-            simInput *= 0.9;
+            // More active simulation for user voice - oscillating pattern
+            simInput = (Math.sin(time * 8) + 1) * 0.25 + (Math.sin(time * 13) + 1) * 0.15;
+            if (Math.random() > 0.7) simInput += Math.random() * 0.3;
             simOutput = 0;
         } else if (mode === 'SPEAKING') {
             simInput = 0;
@@ -296,7 +438,7 @@
             simOutput = 0;
         }
         let target = mode === 'LISTENING' ? simInput : (mode === 'SPEAKING' ? simOutput : 0.2);
-        intensity += (target - intensity) * 0.1;
+        intensity += (target - intensity) * 0.15;
         time += 0.02;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);

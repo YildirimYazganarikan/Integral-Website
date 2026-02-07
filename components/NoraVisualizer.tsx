@@ -100,12 +100,21 @@ export const NoraVisualizer: React.FC<NoraVisualizerProps> = ({ mode, getVolumeL
             if (mode === AgentMode.LISTENING) {
                 targetIntensity = Math.max(0, (input - 0.05) * 1.5);
             } else if (mode === AgentMode.SPEAKING) {
-                targetIntensity = output * 2.5;
+                // Use real output if available, otherwise simulate
+                if (output > 0.05) {
+                    targetIntensity = output * 2.5;
+                } else {
+                    // Simulate AI voice fluctuation with varied oscillations
+                    const wave1 = (Math.sin(timeRef.current * 8) + 1) * 0.3;
+                    const wave2 = (Math.sin(timeRef.current * 13) + 1) * 0.15;
+                    const spike = Math.random() > 0.85 ? Math.random() * 0.4 : 0;
+                    targetIntensity = wave1 + wave2 + spike;
+                }
             } else if (mode === AgentMode.SEARCHING) {
                 targetIntensity = 0.15 + (Math.sin(timeRef.current * 5) * 0.05);
             }
 
-            intensityRef.current += (targetIntensity - intensityRef.current) * 0.15;
+            intensityRef.current += (targetIntensity - intensityRef.current) * 0.2;
             const intensity = Math.max(0, intensityRef.current);
 
             // Determine active frequency data
@@ -253,32 +262,38 @@ function drawParticleCircle(
 
         // === LISTENING MODE: Enhanced displacement when user is speaking ===
         if (mode === AgentMode.LISTENING && intensity > 0.01) {
-            const listeningBoost = settings.listeningIntensity ?? 1.0;
+            const listeningIntensity = settings.listeningIntensity ?? 1.0;
             const listeningRate = settings.listeningRate ?? 8;
+            const listeningSizeBoost = settings.listeningSizeBoost ?? 2.0;
 
             // Particles react more dramatically to user voice
-            const voiceWave = Math.sin(time * listeningRate + p.angle * 3) * intensity * 15 * listeningBoost;
+            const voiceWave = Math.sin(time * listeningRate + p.angle * 3) * intensity * 15 * listeningIntensity;
             const dynamicR = baseRadius + breathe + radiusExpansion + spectralDisplacement + organicNoise + voiceWave;
             x = centerX + Math.cos(p.angle) * dynamicR;
             y = centerY + Math.sin(p.angle) * dynamicR;
-            size = p.size + intensity * 2 * listeningBoost * p.sizeMultiplier;
+
+            // Size boost based on intensity, multiplied by particle's base size
+            const sizeMultiplier = 1 + (intensity * listeningSizeBoost * p.sizeMultiplier);
+            size = p.size * sizeMultiplier;
         }
 
-        // === SPEAKING MODE: Particles pulse outward in waves ===
+        // === SPEAKING MODE: Audio-driven pulsing ===
         if (mode === AgentMode.SPEAKING) {
             const speakingRate = settings.speakingRate ?? 12;
             const speakingIntensity = settings.speakingIntensity ?? 0.5;
+            const speakingSizeBoost = settings.speakingSizeBoost ?? 3.0;
 
-            // Radial pulse waves emanating outward
-            const wavePhase = Math.sin(time * speakingRate - p.angle * 2);
-            const speakPulse = wavePhase * 20 * speakingIntensity;
+            // Audio-driven pulse - responds to actual intensity + subtle oscillation
+            const oscillation = Math.sin(time * speakingRate) * 0.3;
+            const audioPulse = (intensity + oscillation) * 40 * speakingIntensity;
 
-            const dynamicR = baseRadius + breathe + speakPulse;
+            const dynamicR = baseRadius + breathe + audioPulse;
             x = centerX + Math.cos(p.angle) * dynamicR;
             y = centerY + Math.sin(p.angle) * dynamicR;
 
-            // Size oscillates with speech
-            size = p.size * (1 + Math.abs(wavePhase) * 0.3 * speakingIntensity);
+            // Size responds to audio intensity
+            const pulseFactor = (1 + intensity * speakingSizeBoost * p.sizeMultiplier);
+            size = p.size * pulseFactor;
         }
 
         // Calculate fade effect

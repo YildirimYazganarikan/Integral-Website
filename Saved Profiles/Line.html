@@ -79,7 +79,7 @@
         </div>
     </div>
     
-    <script id="nora-profile-data" type="application/json">{"id":"1770410138186","name":"Line","type":"STRAIGHT_LINE","settings":{"radius":100,"radiusSensitivity":1,"displacementSensitivity":0.5,"sizeSensitivity":1,"density":0.65,"thickness":10,"breathingAmount":5,"breathingFrequency":2,"particleFade":0,"noiseScale":1,"listeningRate":7,"listeningIntensity":0.8,"speakingRate":10},"_filename":"Lionel.html","_isDefault":false}</script>
+    <script id="nora-profile-data" type="application/json">{"id":"1770410138186","name":"Line","type":"STRAIGHT_LINE","settings":{"radius":100,"radiusSensitivity":1,"displacementSensitivity":0.5,"sizeSensitivity":1,"density":0.65,"thickness":8,"breathingAmount":5,"breathingFrequency":2,"particleFade":0,"noiseScale":1,"listeningRate":7,"listeningIntensity":0.9,"speakingRate":10},"_filename":"Line.html","_isDefault":false}</script>
     <script>
     const profile = JSON.parse(document.getElementById('nora-profile-data').textContent);
     const canvas = document.getElementById('canvas');
@@ -337,7 +337,7 @@
     function drawSphericalParticle(w, h, time, intensity, settings, color, secColor) {
         const centerX = w / 2;
         const centerY = h / 2;
-        const baseRadius = Math.min(w, h) * (settings.radius / 800) * 2;
+        const baseRadius = settings.radius ?? 160; // Use settings.radius directly like main app
         const rotMult = settings.rotationSpeed !== undefined ? settings.rotationSpeed : 1.0;
         let rotSpeedX = (mode === 'SEARCHING' ? 2.0 : 0.5) * rotMult;
         let rotSpeedY = (mode === 'SEARCHING' ? 3.0 : 0.8) * rotMult;
@@ -346,7 +346,7 @@
         const amount = settings.breathingAmount || 5;
         const breathe = Math.sin(time * freq) * amount;
         
-        let currentRadius = baseRadius + (intensity * 50 * settings.radiusSensitivity) + breathe;
+        let currentRadius = baseRadius + (intensity * 40) + breathe;
         if (mode === 'SEARCHING') {
             currentRadius = baseRadius + Math.sin(time * 3) * 15 + Math.cos(time * 2.3) * 10;
         }
@@ -382,14 +382,53 @@
              ctx.beginPath();
              ctx.arc(centerX + x1 * scale, centerY + y2 * scale, Math.max(0.5, particleSize), 0, Math.PI * 2);
              ctx.fill();
-        });
+         });
         ctx.globalAlpha = 1;
+        
+        // === OUTER SPHERE (SEARCHING MODE ONLY) ===
+        const enableOuterSphere = settings.enableOuterSphere ?? 0;
+        if (enableOuterSphere > 0.5 && mode === 'SEARCHING') {
+            const outerRadius = settings.outerSphereRadius ?? 300;
+            const outerSpeed = settings.outerSphereSpeed ?? 8;
+            const outerDensity = settings.outerSphereDensity ?? 0.2;
+            const outerColor = isDark ? (settings.outerSphereColorDark ?? '#ff6464') : (settings.outerSphereColorLight ?? '#cc4444');
+            
+            ctx.fillStyle = outerColor;
+            const outerCount = Math.floor(50 * outerDensity);
+            
+            for (let i = 0; i < outerCount; i++) {
+                const phi = Math.acos(2 * (i / outerCount) - 1);
+                const theta = 2 * Math.PI * i * 0.618033;
+                
+                const r = outerRadius + Math.sin(time * outerSpeed * 0.5 + i) * 10;
+                
+                let x = r * Math.sin(phi) * Math.cos(theta);
+                let y = r * Math.sin(phi) * Math.sin(theta);
+                let z = r * Math.cos(phi);
+                
+                const rotX = time * rotSpeedX * 0.5;
+                const rotY = time * rotSpeedY * 0.5;
+                
+                let x1 = x * Math.cos(rotY) - z * Math.sin(rotY);
+                let z1 = z * Math.cos(rotY) + x * Math.sin(rotY);
+                let y2 = y * Math.cos(rotX) - z1 * Math.sin(rotX);
+                let z2 = z1 * Math.cos(rotX) + y * Math.sin(rotX);
+                
+                const scale = 400 / (400 + z2);
+                ctx.globalAlpha = Math.max(0.1, scale * 0.5);
+                ctx.beginPath();
+                ctx.arc(centerX + x1 * scale, centerY + y2 * scale, Math.max(1, 2 * scale), 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
     }
 
     function animate() {
         if (mode === 'LISTENING') {
-            if (Math.random() > 0.95) simInput = Math.random();
-            simInput *= 0.9;
+            // More active simulation for user voice - oscillating pattern
+            simInput = (Math.sin(time * 8) + 1) * 0.25 + (Math.sin(time * 13) + 1) * 0.15;
+            if (Math.random() > 0.7) simInput += Math.random() * 0.3;
             simOutput = 0;
         } else if (mode === 'SPEAKING') {
             simInput = 0;
@@ -399,7 +438,7 @@
             simOutput = 0;
         }
         let target = mode === 'LISTENING' ? simInput : (mode === 'SPEAKING' ? simOutput : 0.2);
-        intensity += (target - intensity) * 0.1;
+        intensity += (target - intensity) * 0.15;
         time += 0.02;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);

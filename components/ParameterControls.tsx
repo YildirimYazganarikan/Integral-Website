@@ -545,6 +545,18 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                         onChange={(v) => onUpdateSetting('listeningIntensity', v)}
                         isDarkMode={isDarkMode}
                     />
+                    {type === 'PARTICLE_CIRCLE' && (
+                        <Slider
+                            label="LISTENING SIZE BOOST"
+                            value={settings.listeningSizeBoost ?? 2.0}
+                            min={0.5}
+                            max={5}
+                            step={0.25}
+                            formatValue={(v) => `${v.toFixed(2)}x`}
+                            onChange={(v) => onUpdateSetting('listeningSizeBoost', v)}
+                            isDarkMode={isDarkMode}
+                        />
+                    )}
                 </CollapsibleSection>
             )}
 
@@ -570,6 +582,18 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                         onChange={(v) => onUpdateSetting('speakingIntensity', v)}
                         isDarkMode={isDarkMode}
                     />
+                    {type === 'PARTICLE_CIRCLE' && (
+                        <Slider
+                            label="SPEAKING SIZE BOOST"
+                            value={settings.speakingSizeBoost ?? 3.0}
+                            min={0.5}
+                            max={6}
+                            step={0.25}
+                            formatValue={(v) => `${v.toFixed(2)}x`}
+                            onChange={(v) => onUpdateSetting('speakingSizeBoost', v)}
+                            isDarkMode={isDarkMode}
+                        />
+                    )}
                 </CollapsibleSection>
             )}
         </div>

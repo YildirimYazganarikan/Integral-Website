@@ -31,6 +31,7 @@ const App: React.FC = () => {
         updateSetting,
         renameProfile,
         hasUnsavedChanges,
+        reorderProfiles,
         addProfile,
         duplicateProfile,
         deleteProfile,
@@ -194,6 +195,22 @@ const App: React.FC = () => {
                         <p className="inline-block text-red-500 text-xs bg-red-100 dark:bg-red-900 px-2 py-1 rounded">{state.error}</p>
                     </div>
                 )}
+
+                {/* Minimal Mode Buttons */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+                    {(['LISTENING', 'SPEAKING', 'SEARCHING'] as const).map((mode) => (
+                        <button
+                            key={mode}
+                            onClick={() => setPreviewMode(previewMode === AgentMode[mode] ? null : AgentMode[mode])}
+                            className={`px-3 py-1 text-[10px] font-mono uppercase tracking-wider rounded transition-all ${previewMode === AgentMode[mode] || (previewMode === null && effectiveMode === AgentMode[mode])
+                                ? (isDarkMode ? 'bg-white text-black' : 'bg-black text-white')
+                                : (isDarkMode ? 'bg-white/10 text-white/50 hover:bg-white/20' : 'bg-black/10 text-black/50 hover:bg-black/20')
+                                }`}
+                        >
+                            {mode.charAt(0)}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Settings Drawer */}
@@ -236,6 +253,7 @@ const App: React.FC = () => {
                         onDeleteProfile={deleteProfile}
                         onStartEditing={setEditingProfileId}
                         onRenameProfile={handleRename}
+                        onReorderProfiles={reorderProfiles}
                     />
 
                     <ParameterControls

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 
 interface ColorPickerProps {
     label: string;
@@ -13,6 +13,9 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
     onChange,
     isDarkMode
 }) => {
+    // Use React's useId for unique ID per component instance
+    const uniqueId = useId();
+
     return (
         <div className="flex items-center justify-between">
             <span className="text-xs font-mono opacity-70">{label}</span>
@@ -23,10 +26,10 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
                         backgroundColor: value,
                         borderColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'
                     }}
-                    onClick={() => document.getElementById(`color-input-${label}`)?.click()}
+                    onClick={() => document.getElementById(uniqueId)?.click()}
                 />
                 <input
-                    id={`color-input-${label}`}
+                    id={uniqueId}
                     type="color"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
@@ -37,8 +40,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     className={`w-20 px-2 py-1 text-xs font-mono rounded border ${isDarkMode
-                            ? 'bg-black/50 border-white/20 text-white'
-                            : 'bg-white/50 border-black/20 text-black'
+                        ? 'bg-black/50 border-white/20 text-white'
+                        : 'bg-white/50 border-black/20 text-black'
                         }`}
                     placeholder="#ffffff"
                 />

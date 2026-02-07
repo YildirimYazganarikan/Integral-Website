@@ -70,9 +70,15 @@ export interface VisualizerSettings {
   outerSphereDensity?: number;  // Particle density (0.05-0.5)
 
   // === COLOR CUSTOMIZATION ===
-  particleColor?: string;       // Primary particle color (hex)
-  outerSphereColor?: string;    // Outer sphere particle color (hex)
-  useCustomColors?: number;     // 0 or 1 toggle for custom colors vs theme-based
+  useCustomColors?: number;       // 0 or 1 toggle for custom colors vs grayscale
+  // Dark theme colors
+  particleColorDark?: string;     // Main particle color for dark theme (hex)
+  secondaryColorDark?: string;    // Secondary/accent color for dark theme (hex)
+  outerSphereColorDark?: string;  // Outer sphere color for dark theme (hex)
+  // Light theme colors
+  particleColorLight?: string;    // Main particle color for light theme (hex)
+  secondaryColorLight?: string;   // Secondary/accent color for light theme (hex)
+  outerSphereColorLight?: string; // Outer sphere color for light theme (hex)
 
   // === CIRCLE_RADIUS SIGNAL SETTINGS ===
   signalSpeed?: number;         // Speed of signal ring expansion (0.5-5)

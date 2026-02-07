@@ -490,8 +490,17 @@ function drawSphericalParticle(
 
     // Colors
     const useCustomColors = settings.useCustomColors ?? 0;
-    const particleColor = settings.particleColor ?? '#88aaff';
-    const outerSphereColor = settings.outerSphereColor ?? '#ff6464';
+
+    // Get the right colors based on theme (for custom mode)
+    const customMainColor = isDark
+        ? (settings.particleColorDark ?? '#88aaff')
+        : (settings.particleColorLight ?? '#3355aa');
+    const customAccentColor = isDark
+        ? (settings.secondaryColorDark ?? '#aaccff')
+        : (settings.secondaryColorLight ?? '#224488');
+    const customOuterColor = isDark
+        ? (settings.outerSphereColorDark ?? '#ff6464')
+        : (settings.outerSphereColorLight ?? '#cc4444');
 
     // Parse hex color to RGB
     const hexToRgb = (hex: string): { r: number, g: number, b: number } => {
@@ -500,7 +509,7 @@ function drawSphericalParticle(
             r: parseInt(result[1], 16),
             g: parseInt(result[2], 16),
             b: parseInt(result[3], 16)
-        } : { r: 136, g: 170, b: 255 };
+        } : { r: 128, g: 128, b: 128 };
     };
 
     // === MODE-BASED INTENSITY CALCULATION ===
@@ -581,20 +590,14 @@ function drawSphericalParticle(
 
         // Color calculation
         if (useCustomColors) {
-            // Use custom particle color
-            const rgb = hexToRgb(particleColor);
+            // Use custom particle color based on theme
+            const rgb = hexToRgb(customMainColor);
             const pulseFactor = 0.7 + (squidPulse * 0.3); // Subtle pulse variation
             ctx.fillStyle = `rgba(${Math.floor(rgb.r * scale * pulseFactor)}, ${Math.floor(rgb.g * scale * pulseFactor)}, ${Math.floor(rgb.b * scale * pulseFactor)}, ${alpha})`;
-        } else if (isDark) {
-            // Original squid blue tint for dark mode
-            const brightness = Math.floor(255 * scale);
-            const blueTint = Math.floor(200 + (squidPulse * 55));
-            ctx.fillStyle = `rgba(${brightness}, ${brightness}, ${blueTint}, ${alpha})`;
         } else {
-            // Inverted for light mode: dark particles with subtle blue
-            const darkness = Math.floor(255 * (1 - scale));
-            const blueTint = Math.floor(55 - (squidPulse * 55));
-            ctx.fillStyle = `rgba(${darkness}, ${darkness}, ${Math.max(0, blueTint)}, ${alpha})`;
+            // Grayscale mode - no blue/orange tints
+            const gray = isDark ? Math.floor(255 * scale) : Math.floor(255 * (1 - scale));
+            ctx.fillStyle = `rgba(${gray}, ${gray}, ${gray}, ${alpha})`;
         }
         ctx.fill();
     });
@@ -637,13 +640,14 @@ function drawSphericalParticle(
 
             // Outer sphere color
             if (useCustomColors) {
-                const rgb = hexToRgb(outerSphereColor);
+                const rgb = hexToRgb(customOuterColor);
                 const outerAlpha = Math.min(1, globalAlpha * scale * 2 + 0.1);
                 ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${outerAlpha})`;
             } else {
-                // Red/Scanning tint (same for both themes - red stands out)
+                // Grayscale for outer sphere too
+                const gray = isDark ? 200 : 80;
                 const outerAlpha = Math.min(1, globalAlpha * scale * 2 + 0.1);
-                ctx.fillStyle = isDark ? `rgba(255, 100, 100, ${outerAlpha})` : `rgba(180, 50, 50, ${outerAlpha})`;
+                ctx.fillStyle = `rgba(${gray}, ${gray}, ${gray}, ${outerAlpha})`;
             }
             ctx.fill();
         }

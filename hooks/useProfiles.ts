@@ -34,6 +34,7 @@ interface UseProfilesReturn {
     updateSetting: (key: keyof VisualizerSettings, value: any) => void;
     renameProfile: (id: string, name: string) => void;
     hasUnsavedChanges: (profileId: string) => boolean;
+    reorderProfiles: (fromIndex: number, toIndex: number) => void;
 
     // Async actions
     addProfile: (type: ThemeType) => Promise<void>;
@@ -109,6 +110,16 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
     // Rename profile
     const renameProfile = useCallback((id: string, name: string) => {
         setProfiles(prev => prev.map(p => p.id === id ? { ...p, name } : p));
+    }, []);
+
+    // Reorder profiles (drag and drop)
+    const reorderProfiles = useCallback((fromIndex: number, toIndex: number) => {
+        setProfiles(prev => {
+            const newProfiles = [...prev];
+            const [removed] = newProfiles.splice(fromIndex, 1);
+            newProfiles.splice(toIndex, 0, removed);
+            return newProfiles;
+        });
     }, []);
 
     // Add new profile
@@ -271,6 +282,7 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
         updateSetting,
         renameProfile,
         hasUnsavedChanges,
+        reorderProfiles,
         addProfile,
         duplicateProfile,
         deleteProfile,

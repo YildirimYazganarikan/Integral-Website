@@ -1,5 +1,5 @@
-import React from 'react';
-import { Plus, Trash2, Edit2, Copy, Circle, Activity, Aperture, Disc, Globe } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Trash2, Edit2, Copy, Circle, Activity, Aperture, Disc, Globe, GripVertical } from 'lucide-react';
 import { VisualizerProfile, ThemeType } from '../types';
 
 interface ProfileManagerProps {
@@ -14,6 +14,7 @@ interface ProfileManagerProps {
     onDeleteProfile: (id: string) => void;
     onStartEditing: (id: string) => void;
     onRenameProfile: (id: string, name: string) => void;
+    onReorderProfiles: (fromIndex: number, toIndex: number) => void;
 }
 
 const getThemeIcon = (type: ThemeType) => {
@@ -39,8 +40,44 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({
     onDuplicateProfile,
     onDeleteProfile,
     onStartEditing,
-    onRenameProfile
+    onRenameProfile,
+    onReorderProfiles
 }) => {
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+    const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+    const handleDragStart = (e: React.DragEvent, index: number) => {
+        setDraggedIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', index.toString());
+    };
+
+    const handleDragOver = (e: React.DragEvent, index: number) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (draggedIndex !== null && index !== draggedIndex) {
+            setDragOverIndex(index);
+        }
+    };
+
+    const handleDragLeave = () => {
+        setDragOverIndex(null);
+    };
+
+    const handleDrop = (e: React.DragEvent, toIndex: number) => {
+        e.preventDefault();
+        if (draggedIndex !== null && draggedIndex !== toIndex) {
+            onReorderProfiles(draggedIndex, toIndex);
+        }
+        setDraggedIndex(null);
+        setDragOverIndex(null);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedIndex(null);
+        setDragOverIndex(null);
+    };
+
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-end border-b pb-2 border-current opacity-50">
@@ -64,16 +101,32 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({
             </div>
 
             {/* Profile List */}
-            <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-2">
-                {profiles.map(p => (
+            <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-2">
+                {profiles.map((p, index) => (
                     <div
                         key={p.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, index)}
+                        onDragOver={(e) => handleDragOver(e, index)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, index)}
+                        onDragEnd={handleDragEnd}
                         className={`group flex items-center justify-between p-3 rounded border cursor-pointer transition-all ${activeProfileId === p.id
                                 ? (isDarkMode ? 'border-white bg-white/10' : 'border-black bg-black/5')
                                 : 'border-transparent hover:opacity-70'
+                            } ${draggedIndex === index ? 'opacity-50' : ''
+                            } ${dragOverIndex === index ? (isDarkMode ? 'border-white/50 bg-white/5' : 'border-black/50 bg-black/5') : ''
                             }`}
                         onClick={() => onSelectProfile(p.id)}
                     >
+                        {/* Drag Handle */}
+                        <div
+                            className={`cursor-grab mr-2 opacity-30 hover:opacity-70 ${isDarkMode ? 'text-white' : 'text-black'}`}
+                            onMouseDown={(e) => e.stopPropagation()}
+                        >
+                            <GripVertical size={14} />
+                        </div>
+
                         {editingProfileId === p.id ? (
                             <input
                                 autoFocus
@@ -84,18 +137,18 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({
                                 onClick={(e) => e.stopPropagation()}
                             />
                         ) : (
-                            <div className="flex items-center gap-3">
-                                <div className="relative">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="relative flex-shrink-0">
                                     {getThemeIcon(p.type)}
                                     {hasUnsavedChanges(p.id) && (
                                         <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
                                     )}
                                 </div>
-                                <span className="text-sm font-medium truncate max-w-[100px]">{p.name}</span>
+                                <span className="text-sm font-medium truncate">{p.name}</span>
                             </div>
                         )}
 
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity items-center">
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity items-center flex-shrink-0">
                             <button onClick={(e) => { e.stopPropagation(); onDuplicateProfile(p.id); }} className="hover:scale-110" title="Duplicate">
                                 <Copy size={14} />
                             </button>

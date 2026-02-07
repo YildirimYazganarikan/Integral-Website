@@ -338,22 +338,48 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                     </div>
                     {settings.useCustomColors ? (
                         <>
+                            <p className="text-xs opacity-50 font-bold mt-2 border-b border-current/20 pb-1">DARK THEME</p>
                             <ColorPicker
-                                label="PARTICLE COLOR"
-                                value={settings.particleColor ?? '#88aaff'}
-                                onChange={(v) => onUpdateSetting('particleColor', v)}
+                                label="MAIN PARTICLE"
+                                value={settings.particleColorDark ?? '#88aaff'}
+                                onChange={(v) => onUpdateSetting('particleColorDark', v)}
+                                isDarkMode={isDarkMode}
+                            />
+                            <ColorPicker
+                                label="SECONDARY"
+                                value={settings.secondaryColorDark ?? '#aaccff'}
+                                onChange={(v) => onUpdateSetting('secondaryColorDark', v)}
                                 isDarkMode={isDarkMode}
                             />
                             <ColorPicker
                                 label="OUTER SPHERE"
-                                value={settings.outerSphereColor ?? '#ff6464'}
-                                onChange={(v) => onUpdateSetting('outerSphereColor', v)}
+                                value={settings.outerSphereColorDark ?? '#ff6464'}
+                                onChange={(v) => onUpdateSetting('outerSphereColorDark', v)}
+                                isDarkMode={isDarkMode}
+                            />
+                            <p className="text-xs opacity-50 font-bold mt-3 border-b border-current/20 pb-1">LIGHT THEME</p>
+                            <ColorPicker
+                                label="MAIN PARTICLE"
+                                value={settings.particleColorLight ?? '#3355aa'}
+                                onChange={(v) => onUpdateSetting('particleColorLight', v)}
+                                isDarkMode={isDarkMode}
+                            />
+                            <ColorPicker
+                                label="SECONDARY"
+                                value={settings.secondaryColorLight ?? '#224488'}
+                                onChange={(v) => onUpdateSetting('secondaryColorLight', v)}
+                                isDarkMode={isDarkMode}
+                            />
+                            <ColorPicker
+                                label="OUTER SPHERE"
+                                value={settings.outerSphereColorLight ?? '#cc4444'}
+                                onChange={(v) => onUpdateSetting('outerSphereColorLight', v)}
                                 isDarkMode={isDarkMode}
                             />
                         </>
                     ) : (
                         <p className="text-xs opacity-50 italic">
-                            Theme colors active. Enable custom colors to pick your own.
+                            Grayscale mode. Enable custom colors for full control.
                         </p>
                     )}
                 </CollapsibleSection>

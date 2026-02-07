@@ -429,6 +429,31 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                 </CollapsibleSection>
             )}
 
+            {/* === SPEAKING SETTINGS (CIRCLE_RADIUS ONLY) === */}
+            {type === 'CIRCLE_RADIUS' && (
+                <CollapsibleSection title="Speaking Mode" isDarkMode={isDarkMode} defaultOpen={false}>
+                    <Slider
+                        label="SPEAKING RATE"
+                        value={settings.speakingRate ?? 16}
+                        min={4}
+                        max={30}
+                        step={1}
+                        onChange={(v) => onUpdateSetting('speakingRate', v)}
+                        isDarkMode={isDarkMode}
+                    />
+                    <Slider
+                        label="SPEAKING INTENSITY"
+                        value={settings.speakingIntensity ?? 0.4}
+                        min={0.1}
+                        max={1}
+                        step={0.05}
+                        formatValue={(v) => `${(v * 100).toFixed(0)}%`}
+                        onChange={(v) => onUpdateSetting('speakingIntensity', v)}
+                        isDarkMode={isDarkMode}
+                    />
+                </CollapsibleSection>
+            )}
+
             {/* === SENSITIVITY (NON-SPHERICAL) === */}
             {!isSpherical && (
                 <CollapsibleSection title="Sensitivity" isDarkMode={isDarkMode}>
@@ -495,6 +520,56 @@ export const ParameterControls: React.FC<ParameterControlsProps> = ({
                             />
                         </>
                     )}
+                </CollapsibleSection>
+            )}
+
+            {/* === LISTENING MODE (ALL TYPES) === */}
+            {!isSpherical && (
+                <CollapsibleSection title="Listening Mode" isDarkMode={isDarkMode} defaultOpen={false}>
+                    <Slider
+                        label="LISTENING RATE"
+                        value={settings.listeningRate ?? (type === 'CIRCLE_RADIUS' ? 12 : 8)}
+                        min={2}
+                        max={20}
+                        step={1}
+                        onChange={(v) => onUpdateSetting('listeningRate', v)}
+                        isDarkMode={isDarkMode}
+                    />
+                    <Slider
+                        label="LISTENING INTENSITY"
+                        value={settings.listeningIntensity ?? 1.0}
+                        min={0.2}
+                        max={2}
+                        step={0.1}
+                        formatValue={(v) => `${(v * 100).toFixed(0)}%`}
+                        onChange={(v) => onUpdateSetting('listeningIntensity', v)}
+                        isDarkMode={isDarkMode}
+                    />
+                </CollapsibleSection>
+            )}
+
+            {/* === SPEAKING MODE (PARTICLE_CIRCLE, SIMPLE_CIRCLE, STRAIGHT_LINE) === */}
+            {!isSpherical && type !== 'CIRCLE_RADIUS' && (
+                <CollapsibleSection title="Speaking Mode" isDarkMode={isDarkMode} defaultOpen={false}>
+                    <Slider
+                        label="SPEAKING RATE"
+                        value={settings.speakingRate ?? 12}
+                        min={4}
+                        max={24}
+                        step={1}
+                        onChange={(v) => onUpdateSetting('speakingRate', v)}
+                        isDarkMode={isDarkMode}
+                    />
+                    <Slider
+                        label="SPEAKING INTENSITY"
+                        value={settings.speakingIntensity ?? 0.5}
+                        min={0.1}
+                        max={1}
+                        step={0.05}
+                        formatValue={(v) => `${(v * 100).toFixed(0)}%`}
+                        onChange={(v) => onUpdateSetting('speakingIntensity', v)}
+                        isDarkMode={isDarkMode}
+                    />
                 </CollapsibleSection>
             )}
         </div>

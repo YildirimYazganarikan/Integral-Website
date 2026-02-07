@@ -45,8 +45,35 @@ const App: React.FC = () => {
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [previewMode, setPreviewMode] = useState<AgentMode | null>(null);
+    const [previewCountdown, setPreviewCountdown] = useState<number>(0);
     const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const countdownRef = useRef<NodeJS.Timeout | null>(null);
+
+    // 5-second countdown for preview mode
+    useEffect(() => {
+        if (previewMode !== null) {
+            setPreviewCountdown(5);
+
+            // Clear any existing interval
+            if (countdownRef.current) clearInterval(countdownRef.current);
+
+            countdownRef.current = setInterval(() => {
+                setPreviewCountdown(prev => {
+                    if (prev <= 1) {
+                        setPreviewMode(null);
+                        if (countdownRef.current) clearInterval(countdownRef.current);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+
+            return () => {
+                if (countdownRef.current) clearInterval(countdownRef.current);
+            };
+        }
+    }, [previewMode]);
 
     // Apply theme
     useEffect(() => {
@@ -197,19 +224,37 @@ const App: React.FC = () => {
                 )}
 
                 {/* Minimal Mode Buttons */}
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-1 z-10">
-                    {(['LISTENING', 'SPEAKING', 'SEARCHING'] as const).map((mode) => (
-                        <button
-                            key={mode}
-                            onClick={() => setPreviewMode(previewMode === AgentMode[mode] ? null : AgentMode[mode])}
-                            className={`px-3 py-1 text-[10px] font-mono uppercase tracking-wider rounded transition-all ${previewMode === AgentMode[mode] || (previewMode === null && effectiveMode === AgentMode[mode])
-                                ? (isDarkMode ? 'bg-white text-black' : 'bg-black text-white')
-                                : (isDarkMode ? 'bg-white/10 text-white/50 hover:bg-white/20' : 'bg-black/10 text-black/50 hover:bg-black/20')
-                                }`}
-                        >
-                            {mode.charAt(0)}
-                        </button>
-                    ))}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                    {(['LISTENING', 'SPEAKING', 'SEARCHING'] as const).map((mode) => {
+                        const isActive = previewMode === AgentMode[mode];
+                        const isCurrentAIMode = previewMode === null && effectiveMode === AgentMode[mode];
+                        const showCountdown = isActive && previewCountdown > 0;
+
+                        return (
+                            <div key={mode} className="flex flex-col items-center group relative">
+                                <button
+                                    onClick={() => setPreviewMode(previewMode === AgentMode[mode] ? null : AgentMode[mode])}
+                                    className={`px-3 py-1 text-[10px] font-mono uppercase tracking-wider rounded transition-all ${isActive || isCurrentAIMode
+                                            ? (isDarkMode ? 'bg-white text-black' : 'bg-black text-white')
+                                            : (isDarkMode ? 'bg-white/10 text-white/50 hover:bg-white/20' : 'bg-black/10 text-black/50 hover:bg-black/20')
+                                        }`}
+                                >
+                                    {mode.charAt(0)}
+                                </button>
+                                {/* Countdown timer */}
+                                {showCountdown && (
+                                    <span className={`text-[8px] font-mono mt-0.5 ${isDarkMode ? 'text-white/40' : 'text-black/40'}`}>
+                                        {previewCountdown}s
+                                    </span>
+                                )}
+                                {/* Tooltip on hover */}
+                                <div className={`absolute top-full mt-1 px-2 py-1 text-[9px] font-mono rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none ${isDarkMode ? 'bg-white text-black' : 'bg-black text-white'
+                                    }`}>
+                                    {mode.toLowerCase()}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 

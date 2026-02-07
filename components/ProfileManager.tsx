@@ -112,10 +112,10 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({
                         onDrop={(e) => handleDrop(e, index)}
                         onDragEnd={handleDragEnd}
                         className={`group flex items-center justify-between p-3 rounded border cursor-pointer transition-all ${activeProfileId === p.id
-                                ? (isDarkMode ? 'border-white bg-white/10' : 'border-black bg-black/5')
-                                : 'border-transparent hover:opacity-70'
+                            ? (isDarkMode ? 'border-white bg-white/10' : 'border-black bg-black/5')
+                            : 'border-transparent hover:opacity-70'
                             } ${draggedIndex === index ? 'opacity-50' : ''
-                            } ${dragOverIndex === index ? (isDarkMode ? 'border-white/50 bg-white/5' : 'border-black/50 bg-black/5') : ''
+                            } ${dragOverIndex === index ? 'border-blue-500 bg-blue-500/10' : ''
                             }`}
                         onClick={() => onSelectProfile(p.id)}
                     >

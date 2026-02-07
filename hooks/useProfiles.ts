@@ -4,7 +4,9 @@ import {
     saveProfile as saveProfileToServer,
     loadAllProfiles,
     deleteProfile as deleteProfileFromDisk,
-    getDefaultTemplate
+    getDefaultTemplate,
+    saveProfileOrder,
+    loadProfileOrder
 } from '../lib/fileServer';
 
 // Minimal fallback settings for new profiles when no default template exists
@@ -69,8 +71,21 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
                         ...p,
                         id: p.id || `loaded_${i}_${Date.now()}`
                     }));
-                    setProfiles(profilesWithIds);
-                    setActiveProfileId(profilesWithIds[0].id);
+
+                    // Apply saved order
+                    const savedOrder = await loadProfileOrder();
+                    let orderedProfiles = profilesWithIds;
+                    if (savedOrder.length > 0) {
+                        const orderMap = new Map(savedOrder.map((id, idx) => [id, idx]));
+                        orderedProfiles = [...profilesWithIds].sort((a, b) => {
+                            const aIdx = orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+                            const bIdx = orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+                            return aIdx - bIdx;
+                        });
+                    }
+
+                    setProfiles(orderedProfiles);
+                    setActiveProfileId(orderedProfiles[0].id);
 
                     // Track filenames and originals
                     const filenames: Record<string, string> = {};
@@ -112,12 +127,16 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
         setProfiles(prev => prev.map(p => p.id === id ? { ...p, name } : p));
     }, []);
 
-    // Reorder profiles (drag and drop)
+    // Reorder profiles (drag and drop) with persistence
     const reorderProfiles = useCallback((fromIndex: number, toIndex: number) => {
         setProfiles(prev => {
             const newProfiles = [...prev];
             const [removed] = newProfiles.splice(fromIndex, 1);
             newProfiles.splice(toIndex, 0, removed);
+
+            // Save order to disk
+            saveProfileOrder(newProfiles.map(p => p.id));
+
             return newProfiles;
         });
     }, []);

@@ -251,6 +251,36 @@ function drawParticleCircle(
             size = p.size * 0.8; // Slightly smaller during search
         }
 
+        // === LISTENING MODE: Enhanced displacement when user is speaking ===
+        if (mode === AgentMode.LISTENING && intensity > 0.01) {
+            const listeningBoost = settings.listeningIntensity ?? 1.0;
+            const listeningRate = settings.listeningRate ?? 8;
+
+            // Particles react more dramatically to user voice
+            const voiceWave = Math.sin(time * listeningRate + p.angle * 3) * intensity * 15 * listeningBoost;
+            const dynamicR = baseRadius + breathe + radiusExpansion + spectralDisplacement + organicNoise + voiceWave;
+            x = centerX + Math.cos(p.angle) * dynamicR;
+            y = centerY + Math.sin(p.angle) * dynamicR;
+            size = p.size + intensity * 2 * listeningBoost * p.sizeMultiplier;
+        }
+
+        // === SPEAKING MODE: Particles pulse outward in waves ===
+        if (mode === AgentMode.SPEAKING) {
+            const speakingRate = settings.speakingRate ?? 12;
+            const speakingIntensity = settings.speakingIntensity ?? 0.5;
+
+            // Radial pulse waves emanating outward
+            const wavePhase = Math.sin(time * speakingRate - p.angle * 2);
+            const speakPulse = wavePhase * 20 * speakingIntensity;
+
+            const dynamicR = baseRadius + breathe + speakPulse;
+            x = centerX + Math.cos(p.angle) * dynamicR;
+            y = centerY + Math.sin(p.angle) * dynamicR;
+
+            // Size oscillates with speech
+            size = p.size * (1 + Math.abs(wavePhase) * 0.3 * speakingIntensity);
+        }
+
         // Calculate fade effect
         const particleFade = settings.particleFade !== undefined ? settings.particleFade : 0;
         const noiseScale = settings.noiseScale !== undefined ? settings.noiseScale : 1;
@@ -276,8 +306,6 @@ function drawStraightLine(
     ctx: CanvasRenderingContext2D, w: number, h: number, time: number, intensity: number,
     settings: any, mode: AgentMode, color: string, secondaryColor: string
 ) {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = settings.thickness;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -287,12 +315,17 @@ function drawStraightLine(
 
     const amplitude = 50 * intensity * settings.displacementSensitivity;
 
+    // === USER LINE (GRAY/LIGHTER) - Responds to microphone input ===
     ctx.beginPath();
+    ctx.strokeStyle = color; // Primary color (lighter/gray)
+    ctx.lineWidth = settings.thickness;
+
     for (let i = 0; i <= points; i++) {
         const x = i * spacing;
-        let offset = Math.sin(i * 0.1 + time) * 5;
+        let offset = Math.sin(i * 0.1 + time) * 3; // Subtle idle animation
 
-        if (intensity > 0.001) {
+        // User line responds to listening intensity (microphone)
+        if (mode === AgentMode.LISTENING && intensity > 0.001) {
             const edgeFactor = Math.sin((i / points) * Math.PI);
             const wave1 = Math.sin(i * 0.2 + time * 10);
             const wave2 = Math.cos(i * 0.5 - time * 8);
@@ -300,7 +333,7 @@ function drawStraightLine(
         }
 
         if (mode === AgentMode.SEARCHING) {
-            const travel = Math.sin(i * 0.2 - time * 10) * 20 * Math.sin((i / points) * Math.PI);
+            const travel = Math.sin(i * 0.2 - time * 10) * 15 * Math.sin((i / points) * Math.PI);
             offset = travel;
         }
 
@@ -309,18 +342,34 @@ function drawStraightLine(
     }
     ctx.stroke();
 
-    if (mode === AgentMode.SPEAKING) {
-        ctx.beginPath();
-        ctx.strokeStyle = secondaryColor;
-        for (let i = 0; i <= points; i++) {
-            const x = i * spacing;
-            const edgeFactor = Math.sin((i / points) * Math.PI);
-            const offset = -(Math.sin(i * 0.2 + time * 10) + Math.cos(i * 0.5 - time * 8)) * amplitude * edgeFactor * 0.5;
-            if (i === 0) ctx.moveTo(x, centerY + offset);
-            else ctx.lineTo(x, centerY + offset);
+    // === AI LINE (DARKER) - Responds in Speaking mode ===
+    ctx.beginPath();
+    ctx.strokeStyle = secondaryColor; // Secondary color (darker)
+    ctx.lineWidth = settings.thickness * 0.8;
+
+    // AI line amplitude (active during speaking, subtle idle otherwise)
+    const aiAmplitude = mode === AgentMode.SPEAKING
+        ? 40 * settings.displacementSensitivity
+        : 5;
+    const aiSpeed = mode === AgentMode.SPEAKING ? 12 : 2;
+
+    for (let i = 0; i <= points; i++) {
+        const x = i * spacing;
+        const edgeFactor = Math.sin((i / points) * Math.PI);
+
+        // AI oscillation pattern
+        const wave1 = Math.sin(i * 0.15 + time * aiSpeed);
+        const wave2 = Math.cos(i * 0.4 - time * aiSpeed * 0.8);
+        let offset = (wave1 + wave2) * aiAmplitude * edgeFactor * -1; // Inverted from user line
+
+        if (mode === AgentMode.SEARCHING) {
+            offset = Math.cos(i * 0.2 + time * 8) * 10 * edgeFactor;
         }
-        ctx.stroke();
+
+        if (i === 0) ctx.moveTo(x, centerY + offset);
+        else ctx.lineTo(x, centerY + offset);
     }
+    ctx.stroke();
 }
 
 function drawSimpleCircle(
@@ -339,6 +388,26 @@ function drawSimpleCircle(
 
     let r = baseR + breathe + radiusReaction;
 
+    // === LISTENING MODE: Circle responds to user voice ===
+    if (mode === AgentMode.LISTENING) {
+        const listeningRate = settings.listeningRate ?? 10;
+        const listeningIntensity = settings.listeningIntensity ?? 1.0;
+
+        // Circle expands with voice intensity
+        r = baseR + breathe + (intensity * 80 * settings.radiusSensitivity * listeningIntensity);
+
+        // Add pulsing inner ring when user speaks
+        if (intensity > 0.05) {
+            const innerPulse = Math.sin(time * listeningRate) * intensity * 10;
+            ctx.beginPath();
+            ctx.strokeStyle = secondaryColor;
+            ctx.lineWidth = settings.thickness * 0.5;
+            ctx.arc(centerX, centerY, Math.max(5, r * 0.5 + innerPulse), 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    }
+
+    // === SEARCHING MODE ===
     if (mode === AgentMode.SEARCHING) {
         r = baseR + Math.sin(time * 10) * 5;
         ctx.beginPath();
@@ -359,11 +428,17 @@ function drawSimpleCircle(
     ctx.fill();
     ctx.stroke();
 
-    if (intensity > 0.05) {
+    // Inner filled circle - only in Speaking mode
+    if (mode === AgentMode.SPEAKING) {
+        const speakingRate = settings.speakingRate ?? 16;
+        const speakingIntensity = settings.speakingIntensity ?? 0.5;
+        const pulse = (Math.sin(time * speakingRate) + 1) * 0.5;
+        const baseInnerR = r * 0.3;
+        const innerR = Math.min(r * 0.9, baseInnerR + r * 0.4 * pulse * speakingIntensity);
+
         ctx.fillStyle = color;
         ctx.beginPath();
-        const innerR = r * intensity * 0.8 * settings.displacementSensitivity;
-        ctx.arc(centerX, centerY, Math.min(r, innerR), 0, Math.PI * 2);
+        ctx.arc(centerX, centerY, innerR, 0, Math.PI * 2);
         ctx.fill();
     }
 }
@@ -400,14 +475,24 @@ function drawCircleRadius(
     ctx.lineWidth = settings.thickness;
     ctx.setLineDash([]);
 
-    // Draw standard rings
+    // === LISTENING MODE: Enhanced ring response to user voice ===
+    const listeningRate = settings.listeningRate ?? 12;
+    const listeningIntensity = settings.listeningIntensity ?? 1.0;
+    const isListening = mode === AgentMode.LISTENING;
+
+    // Draw standard rings (with listening mode enhancement)
     for (let i = 0; i < ringCount; i++) {
-        const speed = mode === AgentMode.SEARCHING ? 4 : 2;
-        const chaos = intensity * 20 * settings.displacementSensitivity;
-        const ringPulse = Math.sin(time * speed - i) * (pulse * 0.2 + chaos);
+        const speed = mode === AgentMode.SEARCHING ? 4 : (isListening ? 6 : 2);
+        const chaos = intensity * 20 * settings.displacementSensitivity * (isListening ? listeningIntensity * 2 : 1);
+        const ringPulse = Math.sin(time * speed - i + (isListening ? time * listeningRate * 0.1 : 0)) * (pulse * 0.2 + chaos);
         const ringR = r + (i * ringSpacing) + ringPulse;
 
-        const opacity = (0.6) * (1 - (i / ringCount));
+        let opacity = (0.6) * (1 - (i / ringCount));
+
+        // Enhanced opacity when listening
+        if (isListening && intensity > 0.05) {
+            opacity = Math.min(1, opacity + intensity * 0.3 * listeningIntensity);
+        }
 
         ctx.beginPath();
         ctx.arc(centerX, centerY, Math.max(0, ringR), 0, Math.PI * 2);
@@ -443,6 +528,31 @@ function drawCircleRadius(
                 ctx.stroke();
             }
         }
+    }
+
+    // === SPEAKING MODE: Pulsing inner glow ===
+    if (mode === AgentMode.SPEAKING) {
+        const speakingRate = settings.speakingRate ?? 16;
+        const speakingIntensity = settings.speakingIntensity ?? 0.4;
+
+        // Oscillating pulse based on speaking rate
+        const speakPulse = (Math.sin(time * speakingRate) + 1) * 0.5 * speakingIntensity;
+
+        // Inner pulsing ring
+        const innerR = r * (0.6 + speakPulse * 0.3);
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, Math.max(0, innerR), 0, Math.PI * 2);
+        ctx.lineWidth = settings.thickness * 1.5;
+        ctx.strokeStyle = `rgba(${accentRGB}, ${0.3 + speakPulse * 0.4})`;
+        ctx.stroke();
+
+        // Secondary inner pulse (slightly smaller, offset timing)
+        const innerR2 = r * (0.4 + Math.sin(time * speakingRate * 1.3) * speakingIntensity * 0.15);
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, Math.max(0, innerR2), 0, Math.PI * 2);
+        ctx.lineWidth = settings.thickness * 0.8;
+        ctx.strokeStyle = `rgba(${accentRGB}, ${0.2 + speakPulse * 0.3})`;
+        ctx.stroke();
     }
 
     ctx.restore();

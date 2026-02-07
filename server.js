@@ -210,6 +210,41 @@ app.get('/api/get-default-template', (req, res) => {
     }
 });
 
+// Save profile order
+app.post('/api/save-profile-order', (req, res) => {
+    try {
+        const { order } = req.body;
+        if (!Array.isArray(order)) {
+            return res.status(400).json({ error: 'Order must be an array' });
+        }
+
+        const orderPath = path.join(SAVED_PROFILES_DIR, '_profile_order.json');
+        fs.writeFileSync(orderPath, JSON.stringify({ order }, null, 2), 'utf8');
+        console.log('Saved profile order:', order.length, 'profiles');
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error saving profile order:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Load profile order
+app.get('/api/load-profile-order', (req, res) => {
+    try {
+        const orderPath = path.join(SAVED_PROFILES_DIR, '_profile_order.json');
+        if (fs.existsSync(orderPath)) {
+            const content = fs.readFileSync(orderPath, 'utf8');
+            const data = JSON.parse(content);
+            res.json({ order: data.order || [] });
+        } else {
+            res.json({ order: [] });
+        }
+    } catch (error) {
+        console.error('Error loading profile order:', error);
+        res.json({ order: [] });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`\n📁 File Server running on http://localhost:${PORT}`);
     console.log(`   Saved Profiles: ${SAVED_PROFILES_DIR}\n`);

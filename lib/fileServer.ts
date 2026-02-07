@@ -106,7 +106,9 @@ export const generateProfileHtml = (profile: VisualizerProfile, isDark: boolean 
                 size: Math.random() * 2 + 1,
                 opacity: Math.random() * 0.5 + 0.5,
                 theta: Math.random() * 2 * Math.PI,
-                phi: Math.acos(2 * Math.random() - 1)
+                phi: Math.acos(2 * Math.random() - 1),
+                sizeMultiplier: 0.3 + Math.random() * 1.4,
+                displacementMultiplier: 0.5 + Math.random()
             });
         }
         animate();
@@ -125,32 +127,67 @@ export const generateProfileHtml = (profile: VisualizerProfile, isDark: boolean 
         const freq = settings.breathingFrequency || 2;
         const amount = settings.breathingAmount || 5;
         const breathe = Math.sin(time * freq) * amount;
-        const radiusExpansion = intensity * 40 * settings.radiusSensitivity;
-        const displacementScale = intensity * 20 * settings.displacementSensitivity;
+        const radiusExpansion = intensity * 40 * (settings.radiusSensitivity ?? 1);
+        const displacementScale = intensity * 20 * (settings.displacementSensitivity ?? 1);
 
         ctx.fillStyle = color;
-        particles.forEach(p => {
+        particles.forEach((p, idx) => {
             const noise = Math.sin(p.angle * 10 + time * 5) * Math.cos(p.angle * 5 - time * 2);
             
             let spectralDisplacement = 0;
             if (intensity > 0.05) {
                 const spike = Math.abs(Math.sin(p.angle * 8 + time * 2));
-                spectralDisplacement = spike * intensity * 80 * settings.displacementSensitivity;
+                spectralDisplacement = spike * intensity * 80 * (settings.displacementSensitivity ?? 1);
             }
 
             let size = p.size;
-            if (intensity > 0.1) size += (intensity * 2 * settings.displacementSensitivity);
-            const dynamicR = baseRadius + breathe + radiusExpansion + spectralDisplacement + (noise * displacementScale);
+            const sizeMultiplier = p.sizeMultiplier ?? 1;
+            
+            let dynamicR = baseRadius + breathe + radiusExpansion + spectralDisplacement + (noise * displacementScale);
             let x = centerX + Math.cos(p.angle) * dynamicR;
             let y = centerY + Math.sin(p.angle) * dynamicR;
             
-            if (mode === 'SEARCHING') {
-                const orbitSpeed = time * 4;
-                x = centerX + Math.cos(p.angle + orbitSpeed) * (baseRadius + Math.sin(time*5)*10);
-                y = centerY + Math.sin(p.angle + orbitSpeed) * (baseRadius + Math.sin(time*5)*10);
+            // === LISTENING MODE ===
+            if (mode === 'LISTENING' && intensity > 0.01) {
+                const listeningIntensity = settings.listeningIntensity ?? 1.0;
+                const listeningRate = settings.listeningRate ?? 8;
+                const listeningSizeBoost = settings.listeningSizeBoost ?? 2.0;
+
+                const voiceWave = Math.sin(time * listeningRate + p.angle * 3) * intensity * 15 * listeningIntensity;
+                dynamicR = baseRadius + breathe + radiusExpansion + spectralDisplacement + voiceWave;
+                x = centerX + Math.cos(p.angle) * dynamicR;
+                y = centerY + Math.sin(p.angle) * dynamicR;
+                
+                size = p.size * (1 + intensity * listeningSizeBoost * sizeMultiplier);
             }
+            
+            // === SPEAKING MODE ===
+            if (mode === 'SPEAKING') {
+                const speakingRate = settings.speakingRate ?? 12;
+                const speakingIntensity = settings.speakingIntensity ?? 0.5;
+                const speakingSizeBoost = settings.speakingSizeBoost ?? 3.0;
+
+                const oscillation = Math.sin(time * speakingRate) * 0.3;
+                const audioPulse = (intensity + oscillation) * 40 * speakingIntensity;
+
+                dynamicR = baseRadius + breathe + audioPulse;
+                x = centerX + Math.cos(p.angle) * dynamicR;
+                y = centerY + Math.sin(p.angle) * dynamicR;
+
+                size = p.size * (1 + intensity * speakingSizeBoost * sizeMultiplier);
+            }
+            
+            // === SEARCHING MODE ===
+            if (mode === 'SEARCHING') {
+                const orbitSpeed = time * 2;
+                const pulse = Math.sin(time * 3) * 8;
+                x = centerX + Math.cos(p.angle + orbitSpeed) * (baseRadius + pulse);
+                y = centerY + Math.sin(p.angle + orbitSpeed) * (baseRadius + pulse);
+                size = p.size * 0.8;
+            }
+            
             ctx.beginPath();
-            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.arc(x, y, Math.max(0.5, size), 0, Math.PI * 2);
             ctx.globalAlpha = p.opacity;
             ctx.fill();
         });
@@ -220,13 +257,30 @@ export const generateProfileHtml = (profile: VisualizerProfile, isDark: boolean 
         const freq = settings.breathingFrequency || 1.5;
         const amount = settings.breathingAmount || 5;
         const breathe = Math.sin(time * freq) * amount;
-        const r = baseR + breathe + (intensity * 60 * settings.radiusSensitivity);
+        let r = baseR + breathe + (intensity * 60 * (settings.radiusSensitivity ?? 1));
 
-        if (mode === 'SEARCHING') {
+        // === LISTENING MODE: Expanding ring animation ===
+        if (mode === 'LISTENING' && intensity > 0.05) {
+            const listeningRate = settings.listeningRate ?? 8;
+            const listeningIntensity = settings.listeningIntensity ?? 1.0;
+            const innerPulse = Math.sin(time * listeningRate) * intensity * 20 * listeningIntensity;
+            
             ctx.beginPath();
             ctx.strokeStyle = secColor;
             ctx.lineWidth = 2;
-            ctx.arc(centerX, centerY, baseR + Math.sin(time*10)*5 + 30, time*5, time*5 + Math.PI*1.5);
+            ctx.arc(centerX, centerY, Math.max(5, r * 0.5 + innerPulse), 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // === SEARCHING MODE ===
+        if (mode === 'SEARCHING') {
+            r = baseR + Math.sin(time * 10) * 5;
+            ctx.beginPath();
+            ctx.strokeStyle = secColor;
+            ctx.lineWidth = 2;
+            const startAngle = time * 5;
+            const endAngle = startAngle + Math.PI * 1.5;
+            ctx.arc(centerX, centerY, r + 30, startAngle, endAngle);
             ctx.stroke();
         }
 
@@ -238,10 +292,17 @@ export const generateProfileHtml = (profile: VisualizerProfile, isDark: boolean 
         ctx.fill();
         ctx.stroke();
 
-        if (intensity > 0.05) {
+        // Inner filled circle - only in Speaking mode (pulsing)
+        if (mode === 'SPEAKING') {
+            const speakingRate = settings.speakingRate ?? 16;
+            const speakingIntensity = settings.speakingIntensity ?? 0.5;
+            const pulse = (Math.sin(time * speakingRate) + 1) * 0.5;
+            const baseInnerR = r * 0.3;
+            const innerR = Math.min(r * 0.9, baseInnerR + r * 0.4 * pulse * speakingIntensity);
+
             ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.arc(centerX, centerY, Math.min(r, r * intensity * 0.8 * settings.displacementSensitivity), 0, Math.PI * 2);
+            ctx.arc(centerX, centerY, innerR, 0, Math.PI * 2);
             ctx.fill();
         }
     }

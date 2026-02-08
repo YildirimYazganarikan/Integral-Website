@@ -3,6 +3,7 @@ import { useLiveAgent } from './hooks/useLiveAgent';
 import { useNotification } from './hooks/useNotification';
 import { useApiKey } from './hooks/useApiKey';
 import { useProfiles } from './hooks/useProfiles';
+import { useAuth } from './contexts/AuthContext';
 import { generateProfileHtml, setAsDefaultTemplate, openSavedFolder } from './lib/fileServer';
 import { NoraVisualizer } from './components/NoraVisualizer';
 import { ControlBar } from './components/ControlBar';
@@ -14,8 +15,10 @@ import { LocalStorageSection } from './components/LocalStorageSection';
 import { ImportExportButtons } from './components/ImportExportButtons';
 import { Notification } from './components/ui/Notification';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { LoginPage } from './components/auth/LoginPage';
+import { SignupPage } from './components/auth/SignupPage';
 import { AgentMode, ThemeType } from './types';
-import { Loader2, X, Circle, Activity, Aperture, Disc, Globe, Sun, Moon } from 'lucide-react';
+import { Loader2, X, Circle, Activity, Aperture, Disc, Globe, Sun, Moon, LogOut, User } from 'lucide-react';
 
 const App: React.FC = () => {
     // Custom hooks
@@ -41,6 +44,10 @@ const App: React.FC = () => {
         ignoreChanges,
         importProfile
     } = useProfiles(showNotification);
+
+    // Auth state
+    const { user, loading: authLoading, signOut, isConfigured: isSupabaseConfigured } = useAuth();
+    const [authPage, setAuthPage] = useState<'login' | 'signup'>('login');
 
     // Local UI state
     const [showWelcome, setShowWelcome] = useState(true);
@@ -160,6 +167,45 @@ const App: React.FC = () => {
         }
     };
 
+    // Auth loading
+    if (authLoading) {
+        return (
+            <div className={`h-[100dvh] w-full flex items-center justify-center font-mono ${isDarkMode ? 'text-white bg-black' : 'text-black bg-white'}`}>
+                <Loader2 className="animate-spin" size={32} />
+            </div>
+        );
+    }
+
+    // Auth pages (Supabase required, no skip option)
+    if (isSupabaseConfigured && !user) {
+        if (authPage === 'signup') {
+            return (
+                <SignupPage
+                    isDarkMode={isDarkMode}
+                    onSwitchToLogin={() => setAuthPage('login')}
+                />
+            );
+        }
+        return (
+            <LoginPage
+                isDarkMode={isDarkMode}
+                onSwitchToSignup={() => setAuthPage('signup')}
+            />
+        );
+    }
+
+    // If Supabase not configured, show error
+    if (!isSupabaseConfigured) {
+        return (
+            <div className={`h-[100dvh] w-full flex items-center justify-center font-mono ${isDarkMode ? 'text-white bg-black' : 'text-black bg-white'}`}>
+                <div className="text-center p-8">
+                    <h1 className="text-xl font-bold mb-4">Configuration Required</h1>
+                    <p className="opacity-70">Please configure Supabase credentials in .env.local</p>
+                </div>
+            </div>
+        );
+    }
+
     // Welcome screen
     if (showWelcome) {
         return <WelcomeScreen onEnterStudio={() => setShowWelcome(false)} />;
@@ -273,6 +319,23 @@ const App: React.FC = () => {
                         <h2 className="text-xl font-bold tracking-widest uppercase">Configuration</h2>
                         <button onClick={() => setShowSettings(false)}><X size={24} /></button>
                     </div>
+
+                    {/* User Account Section */}
+                    {user && (
+                        <div className={`flex items-center justify-between p-3 rounded-lg border ${isDarkMode ? 'border-white/20 bg-white/5' : 'border-black/20 bg-black/5'}`}>
+                            <div className="flex items-center gap-2">
+                                <User size={16} className="opacity-60" />
+                                <span className="text-sm truncate max-w-[180px]">{user.email}</span>
+                            </div>
+                            <button
+                                onClick={() => signOut()}
+                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-black/10'}`}
+                            >
+                                <LogOut size={14} />
+                                Logout
+                            </button>
+                        </div>
+                    )}
 
                     <ImportExportButtons
                         isDarkMode={isDarkMode}

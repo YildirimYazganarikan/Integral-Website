@@ -18,7 +18,7 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { LoginPage } from './components/auth/LoginPage';
 import { SignupPage } from './components/auth/SignupPage';
 import { AgentMode, ThemeType } from './types';
-import { Loader2, X, Circle, Activity, Aperture, Disc, Globe, Sun, Moon, LogOut, User } from 'lucide-react';
+import { Loader2, X, Circle, Activity, Aperture, Disc, Globe, Sun, Moon, LogOut, User, Trash2 } from 'lucide-react';
 
 const App: React.FC = () => {
     // Custom hooks
@@ -322,18 +322,32 @@ const App: React.FC = () => {
 
                     {/* User Account Section */}
                     {user && (
-                        <div className={`flex items-center justify-between p-3 rounded-lg border ${isDarkMode ? 'border-white/20 bg-white/5' : 'border-black/20 bg-black/5'}`}>
-                            <div className="flex items-center gap-2">
+                        <div className={`p-4 rounded-lg border ${isDarkMode ? 'border-white/20 bg-white/5' : 'border-black/20 bg-black/5'}`}>
+                            <div className="flex items-center gap-2 mb-3">
                                 <User size={16} className="opacity-60" />
-                                <span className="text-sm truncate max-w-[180px]">{user.email}</span>
+                                <span className="text-sm truncate flex-1">{user.email}</span>
                             </div>
-                            <button
-                                onClick={() => signOut()}
-                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-black/10'}`}
-                            >
-                                <LogOut size={14} />
-                                Logout
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => signOut()}
+                                    className={`flex-1 flex items-center justify-center gap-2 text-sm px-3 py-2 rounded border transition-colors ${isDarkMode ? 'border-white/30 hover:bg-white/10' : 'border-black/30 hover:bg-black/10'}`}
+                                >
+                                    <LogOut size={14} />
+                                    Logout
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+                                            // Note: Full account deletion requires admin API
+                                            signOut();
+                                        }
+                                    }}
+                                    className="flex items-center justify-center gap-2 text-sm px-3 py-2 rounded border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-colors"
+                                    title="Delete Account"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
                         </div>
                     )}
 

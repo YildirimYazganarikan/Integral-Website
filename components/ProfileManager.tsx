@@ -148,14 +148,14 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({
                             </div>
                         )}
 
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity items-center flex-shrink-0">
+                        <div className="flex gap-2 opacity-60 hover:opacity-100 transition-opacity items-center flex-shrink-0">
                             <button onClick={(e) => { e.stopPropagation(); onDuplicateProfile(p.id); }} className="hover:scale-110" title="Duplicate">
                                 <Copy size={14} />
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); onStartEditing(p.id); }} className="hover:scale-110">
+                            <button onClick={(e) => { e.stopPropagation(); onStartEditing(p.id); }} className="hover:scale-110" title="Rename">
                                 <Edit2 size={14} />
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); onDeleteProfile(p.id); }} className="hover:text-red-500">
+                            <button onClick={(e) => { e.stopPropagation(); onDeleteProfile(p.id); }} className="hover:text-red-500 hover:scale-110" title="Delete Profile">
                                 <Trash2 size={14} />
                             </button>
                         </div>

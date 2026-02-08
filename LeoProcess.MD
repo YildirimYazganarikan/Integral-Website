@@ -37,3 +37,5 @@
 33. I deployed again, but when I clicked delete user it gave an eror: (uploaded screenshot)
 34. I havent added the SUPABASE_SERVICE_ROLE_KEY=... To vercel shall I add?
 35. Ok now it works however there is an issue... (Auth flow changes)
+36. (Implemented auth flow changes)
+37. Lets say we want to delete all the profiles of all the users and add these themes... (Theme migration)

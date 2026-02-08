@@ -20,84 +20,111 @@ const DEFAULT_SETTINGS: VisualizerSettings = {
 // Default starter profiles for new users
 const getStarterProfiles = (): Omit<VisualizerProfile, 'id'>[] => [
     {
-        name: 'Core Pulse',
+        name: 'Simple Circle',
         type: 'SIMPLE_CIRCLE',
         settings: {
-            radius: 20,
-            radiusSensitivity: 1.2,
-            displacementSensitivity: 0.5,
-            sizeSensitivity: 1,
-            density: 0,
-            thickness: 2,
-            breathingAmount: 8,
-            breathingFrequency: 1.5,
-            particleFade: 0,
-            noiseScale: 1
-        }
-    },
-    {
-        name: 'Particle Flow',
-        type: 'PARTICLE_CIRCLE',
-        settings: {
-            radius: 95,
-            radiusSensitivity: 3.3,
-            displacementSensitivity: 2.4,
-            sizeSensitivity: 0,
-            density: 0.1,
-            thickness: 2,
-            breathingAmount: 5,
-            breathingFrequency: 2.1,
-            particleFade: 0,
-            noiseScale: 1
-        }
-    },
-    {
-        name: 'Circular Radius',
-        type: 'CIRCLE_RADIUS',
-        settings: {
-            radius: 29,
-            radiusSensitivity: 0.6,
-            displacementSensitivity: 0.5,
-            sizeSensitivity: 1,
-            density: 0,
-            thickness: 1,
-            breathingAmount: 0,
-            breathingFrequency: 1,
-            particleFade: 0,
-            noiseScale: 1
-        }
-    },
-    {
-        name: 'Orbital Sphere',
-        type: 'SPHERICAL_PARTICLE',
-        settings: {
-            radius: 20,
-            radiusSensitivity: 0.8,
-            displacementSensitivity: 1.2,
-            sizeSensitivity: 1,
-            density: 0.6,
-            thickness: 1,
-            rotationSpeed: 0.2,
-            breathingAmount: 5,
-            breathingFrequency: 1,
-            particleFade: 0,
-            noiseScale: 1
-        }
-    },
-    {
-        name: 'New Style',
-        type: 'SIMPLE_CIRCLE',
-        settings: {
-            radius: 300,
-            radiusSensitivity: 1,
-            displacementSensitivity: 1,
+            radius: 141,
+            radiusSensitivity: 0.7,
+            displacementSensitivity: 0.6,
             sizeSensitivity: 1,
             density: 0.5,
             thickness: 2,
+            breathingAmount: 14,
+            breathingFrequency: 1.1,
+            particleFade: 0,
+            noiseScale: 1,
+            speakingIntensity: 0.35,
+            speakingRate: 8
+        }
+    },
+    {
+        name: 'Particle Circle',
+        type: 'PARTICLE_CIRCLE',
+        settings: {
+            radius: 58,
+            radiusSensitivity: 2.3,
+            displacementSensitivity: 0,
+            sizeSensitivity: 1,
+            density: 0.1,
+            thickness: 2,
+            breathingAmount: 13,
+            breathingFrequency: 1.9,
+            particleFade: 0.05,
+            noiseScale: 1.2,
+            speakingRate: 5,
+            speakingIntensity: 0.6,
+            speakingSizeBoost: 1.5,
+            listeningRate: 7,
+            listeningIntensity: 1.3
+        }
+    },
+    {
+        name: 'Straight Line',
+        type: 'STRAIGHT_LINE',
+        settings: {
+            radius: 100,
+            radiusSensitivity: 1,
+            displacementSensitivity: 0.5,
+            sizeSensitivity: 1,
+            density: 0.65,
+            thickness: 8,
             breathingAmount: 5,
             breathingFrequency: 2,
             particleFade: 0,
-            noiseScale: 1
+            noiseScale: 1,
+            listeningRate: 7,
+            listeningIntensity: 0.9,
+            speakingRate: 10
+        }
+    },
+    {
+        name: 'Circle Radius',
+        type: 'CIRCLE_RADIUS',
+        settings: {
+            radius: 27,
+            radiusSensitivity: 0.5,
+            displacementSensitivity: 1.9,
+            sizeSensitivity: 1,
+            density: 0.5,
+            thickness: 1,
+            breathingAmount: 14,
+            breathingFrequency: 1.9,
+            particleFade: 0,
+            noiseScale: 1,
+            speakingIntensity: 0.1,
+            speakingRate: 4
+        }
+    },
+    {
+        name: 'Spherical Particle',
+        type: 'SPHERICAL_PARTICLE',
+        settings: {
+            radius: 170,
+            radiusSensitivity: 0.7,
+            displacementSensitivity: 0.7,
+            sizeSensitivity: 0.4,
+            density: 0.61,
+            thickness: 2,
+            breathingAmount: 15,
+            breathingFrequency: 0.6,
+            particleFade: 0.5,
+            noiseScale: 2,
+            rotationSpeed: 0.1,
+            baseSize: 2.2,
+            opacity: 0.45,
+            squidSpeed: 2.4,
+            squidAmplitude: 2.2,
+            squidOpacityVar: 0.45,
+            listeningTriggerSens: 0.001,
+            listeningIntensity: 0.3,
+            speakingRate: 4.5,
+            speakingIntensity: 0.3,
+            enableOuterSphere: 1,
+            outerSphereRadius: 280,
+            searchingSpeed: 0.3,
+            searchingJitter: 11,
+            outerSphereDensity: 0.5,
+            outerSphereSpeed: 1.5
         }
     }
 ];

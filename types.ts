@@ -92,4 +92,9 @@ export interface VisualizerProfile {
   name: string;
   type: ThemeType;
   settings: VisualizerSettings;
+  // Database fields
+  is_default?: boolean;
+  sort_order?: number;
+  created_at?: string;
+  updated_at?: string;
 }

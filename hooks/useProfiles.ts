@@ -124,7 +124,7 @@ interface UseProfilesReturn {
     saveCopy: (profile: VisualizerProfile) => Promise<{ success: boolean; error?: string }>;
     ignoreChanges: (profileId: string) => void;
     importProfile: (profile: VisualizerProfile) => void;
-    savedProfileFilenames: Record<string, string>;
+    setAsDefault: (profile: VisualizerProfile) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function useProfiles(showNotification: (type: 'success' | 'error', message: string) => void): UseProfilesReturn {
@@ -170,6 +170,7 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
                         name: row.name,
                         type: row.type as ThemeType,
                         settings: row.settings as VisualizerSettings,
+                        is_default: row.is_default
                     }));
                     setProfiles(loaded);
                     setActiveProfileId(loaded[0].id);
@@ -211,6 +212,7 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
                                     name: inserted.name,
                                     type: inserted.type as ThemeType,
                                     settings: inserted.settings as VisualizerSettings,
+                                    is_default: inserted.is_default
                                 });
                             }
                         } catch (err: any) {
@@ -319,6 +321,7 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
                 name: data.name,
                 type: data.type as ThemeType,
                 settings: data.settings as VisualizerSettings,
+                is_default: data.is_default
             };
 
             setProfiles(prev => [...prev, created]);
@@ -358,6 +361,7 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
                 name: data.name,
                 type: data.type as ThemeType,
                 settings: data.settings as VisualizerSettings,
+                is_default: false // Copy is never default initially
             };
 
             setProfiles(prev => [...prev, duplicated]);
@@ -456,6 +460,7 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
                 name: data.name,
                 type: data.type as ThemeType,
                 settings: data.settings as VisualizerSettings,
+                is_default: false
             };
 
             setProfiles(prev => [...prev, newProfile]);
@@ -471,6 +476,39 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
             return { success: false, error: err.message };
         }
     }, [user, profiles.length, showNotification]);
+
+    // Set as default
+    const setAsDefault = useCallback(async (profile: VisualizerProfile) => {
+        if (!supabase || !user) return { success: false, error: 'Not connected' };
+
+        try {
+            // First, unset default for all other profiles
+            await supabase
+                .from('visualizer_profiles')
+                .update({ is_default: false })
+                .eq('user_id', user.id);
+
+            // Then set default for this profile
+            const { error } = await supabase
+                .from('visualizer_profiles')
+                .update({ is_default: true })
+                .eq('id', profile.id)
+                .eq('user_id', user.id);
+
+            if (error) throw error;
+
+            setProfiles(prev => prev.map(p => ({
+                ...p,
+                is_default: p.id === profile.id
+            })));
+
+            showNotification('success', 'Set as default');
+            return { success: true };
+        } catch (err: any) {
+            console.error('Failed to set default:', err);
+            return { success: false, error: err.message };
+        }
+    }, [user, showNotification]);
 
     // Ignore changes (revert)
     const ignoreChanges = useCallback((profileId: string) => {
@@ -505,6 +543,7 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
                 name: data.name,
                 type: data.type as ThemeType,
                 settings: data.settings as VisualizerSettings,
+                is_default: false
             };
 
             setProfiles(prev => [...prev, imported]);
@@ -536,5 +575,6 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
         saveCopy,
         ignoreChanges,
         importProfile,
+        setAsDefault,
     };
 }

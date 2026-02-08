@@ -1,24 +1,5 @@
 import { VisualizerProfile } from '../types';
 
-const API_BASE = 'http://localhost:3001/api';
-
-export interface SavedProfile {
-    name: string;
-    path: string;
-    modified: string;
-    isDefault: boolean;
-}
-
-// Check if file server is running
-export const isFileServerRunning = async (): Promise<boolean> => {
-    try {
-        const response = await fetch(`${API_BASE}/list-profiles`, { method: 'GET' });
-        return response.ok;
-    } catch {
-        return false;
-    }
-};
-
 // Generate HTML content for a profile (same as export format)
 export const generateProfileHtml = (profile: VisualizerProfile, isDark: boolean = true): string => {
     const dataStr = JSON.stringify(profile);
@@ -34,7 +15,7 @@ export const generateProfileHtml = (profile: VisualizerProfile, isDark: boolean 
     let intensity = 0;
     let simInput = 0;
     let simOutput = 0;
-    let isDark = true;
+    let isDark = ${isDark};
 
     function getColors() {
         if (isDark) {
@@ -53,7 +34,7 @@ export const generateProfileHtml = (profile: VisualizerProfile, isDark: boolean 
     }
 
     function updateTheme() {
-        document.body.classList.toggle('light', !isDark);
+        document.body.className = isDark ? '' : 'light';
         
         // Update all buttons with theme class
         document.querySelectorAll('.mode-btn, .theme-btn-half').forEach(btn => {
@@ -386,7 +367,7 @@ export const generateProfileHtml = (profile: VisualizerProfile, isDark: boolean 
              ctx.beginPath();
              ctx.arc(centerX + x1 * scale, centerY + y2 * scale, Math.max(0.5, particleSize), 0, Math.PI * 2);
              ctx.fill();
-         });\r
+         });
         ctx.globalAlpha = 1;
         
         // === OUTER SPHERE (SEARCHING MODE ONLY) ===
@@ -526,19 +507,19 @@ export const generateProfileHtml = (profile: VisualizerProfile, isDark: boolean 
         .theme-btn-half.light.active { background: #000; color: #fff; }
     </style>
 </head>
-<body>
+<body class="${isDark ? '' : 'light'}">
     <canvas id="canvas"></canvas>
     
     <!-- Top controls -->
     <div class="top-controls">
         <div class="mode-buttons">
-            <button class="mode-btn dark active" data-mode="LISTENING">L</button>
-            <button class="mode-btn dark" data-mode="SPEAKING">S</button>
-            <button class="mode-btn dark" data-mode="SEARCHING">S</button>
+            <button class="mode-btn ${isDark ? 'dark' : 'light'} active" data-mode="LISTENING">L</button>
+            <button class="mode-btn ${isDark ? 'dark' : 'light'}" data-mode="SPEAKING">S</button>
+            <button class="mode-btn ${isDark ? 'dark' : 'light'}" data-mode="SEARCHING">S</button>
         </div>
-        <div class="theme-toggle dark">
-            <button class="theme-btn-half dark" data-theme="light" title="Light mode">☀</button>
-            <button class="theme-btn-half dark active" data-theme="dark" title="Dark mode">●</button>
+        <div class="theme-toggle ${isDark ? 'dark' : 'light'}">
+            <button class="theme-btn-half ${isDark ? 'dark' : 'light'}" data-theme="light" title="Light mode">☀</button>
+            <button class="theme-btn-half ${isDark ? 'dark' : 'light'} active" data-theme="dark" title="Dark mode">●</button>
         </div>
     </div>
     
@@ -548,144 +529,8 @@ export const generateProfileHtml = (profile: VisualizerProfile, isDark: boolean 
 </html>`;
 };
 
-// Load all profiles from disk (for initial load)
-export const loadAllProfiles = async (): Promise<VisualizerProfile[]> => {
-    try {
-        const response = await fetch(`${API_BASE}/list-all-profiles`);
-        const data = await response.json();
-        return data.profiles || [];
-    } catch {
-        return [];
-    }
-};
-
-// Save profile as HTML to local storage
-export const saveProfile = async (
-    profile: VisualizerProfile,
-    isDefault: boolean = false
-): Promise<{ success: boolean; path?: string; filename?: string; error?: string }> => {
-    try {
-        const htmlContent = generateProfileHtml(profile);
-        const response = await fetch(`${API_BASE}/save-profile`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                filename: profile.name,
-                htmlContent,
-                isDefault,
-                profileType: profile.type
-            }),
-        });
-        return await response.json();
-    } catch (error: any) {
-        return { success: false, error: error.message || 'Server not running' };
-    }
-};
-
-// Save profile with a new name
-export const saveProfileAsNew = async (
-    profile: VisualizerProfile,
-    newName: string
-): Promise<{ success: boolean; path?: string; filename?: string; error?: string }> => {
-    const newProfile = { ...profile, name: newName };
-    return saveProfile(newProfile, false);
-};
-
-// Set profile as default template
-export const setAsDefaultTemplate = async (
-    profile: VisualizerProfile
-): Promise<{ success: boolean; path?: string; error?: string }> => {
-    return saveProfile(profile, true);
-};
-
-// List saved profiles (metadata only)
-export const listSavedProfiles = async (): Promise<SavedProfile[]> => {
-    try {
-        const response = await fetch(`${API_BASE}/list-profiles`);
-        const data = await response.json();
-        return data.files || [];
-    } catch {
-        return [];
-    }
-};
-
-// Load profile from saved file
-export const loadProfile = async (filename: string): Promise<VisualizerProfile | null> => {
-    try {
-        const response = await fetch(`${API_BASE}/load-profile?filename=${encodeURIComponent(filename)}`);
-        const data = await response.json();
-        return data.profile || null;
-    } catch {
-        return null;
-    }
-};
-
-// Get default template for a profile type
-export const getDefaultTemplate = async (type: string): Promise<VisualizerProfile | null> => {
-    try {
-        const response = await fetch(`${API_BASE}/get-default-template?type=${encodeURIComponent(type)}`);
-        const data = await response.json();
-        if (data.found && data.profile) {
-            return data.profile;
-        }
-        return null;
-    } catch {
-        return null;
-    }
-};
-
-// Delete saved profile
-export const deleteProfile = async (filename: string): Promise<boolean> => {
-    try {
-        const response = await fetch(`${API_BASE}/delete-profile`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename }),
-        });
-        const data = await response.json();
-        return data.success || false;
-    } catch {
-        return false;
-    }
-};
-
-// Open saved profiles folder
+// No-op placeholder for opening folder (since we removed local server)
 export const openSavedFolder = async (): Promise<boolean> => {
-    try {
-        const response = await fetch(`${API_BASE}/open-folder`);
-        const data = await response.json();
-        return data.success || false;
-    } catch {
-        return false;
-    }
-};
-
-// Legacy exports for backward compatibility
-export const saveHtmlFile = saveProfile;
-export const saveDefaultTemplate = setAsDefaultTemplate;
-
-// Save profile order
-export const saveProfileOrder = async (profileIds: string[]): Promise<boolean> => {
-    try {
-        const response = await fetch(`${API_BASE}/save-profile-order`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order: profileIds }),
-        });
-        const data = await response.json();
-        return data.success || false;
-    } catch {
-        return false;
-    }
-};
-
-// Load profile order
-export const loadProfileOrder = async (): Promise<string[]> => {
-    try {
-        const response = await fetch(`${API_BASE}/load-profile-order`);
-        const data = await response.json();
-        return data.order || [];
-    } catch {
-        return [];
-    }
+    console.warn('Local file operations are not supported in this environment.');
+    return false;
 };

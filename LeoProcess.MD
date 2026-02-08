@@ -29,3 +29,4 @@
 25. and redeploy
 26. Check github, I probably changed the name of the repo
 27. Continue
+28. yes (Push changes)

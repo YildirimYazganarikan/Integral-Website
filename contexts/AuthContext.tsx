@@ -76,8 +76,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!supabase || !session) return { error: 'Not authenticated' };
 
         try {
-            // Call the server-side delete endpoint
-            const response = await fetch('http://localhost:3001/api/delete-user', {
+            // Call the server-side delete endpoint (works for both local proxy and Vercel)
+            const response = await fetch('/api/delete-user', {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`,

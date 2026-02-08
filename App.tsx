@@ -4,7 +4,7 @@ import { useNotification } from './hooks/useNotification';
 import { useApiKey } from './hooks/useApiKey';
 import { useProfiles } from './hooks/useProfiles';
 import { useAuth } from './contexts/AuthContext';
-import { generateProfileHtml, setAsDefaultTemplate, openSavedFolder } from './lib/fileServer';
+import { generateProfileHtml, openSavedFolder } from './lib/fileServer';
 import { NoraVisualizer } from './components/NoraVisualizer';
 import { ControlBar } from './components/ControlBar';
 import { ProfileManager } from './components/ProfileManager';
@@ -42,7 +42,8 @@ const App: React.FC = () => {
         saveProfile,
         saveCopy,
         ignoreChanges,
-        importProfile
+        importProfile,
+        setAsDefault
     } = useProfiles(showNotification);
 
     // Auth state
@@ -143,7 +144,7 @@ const App: React.FC = () => {
 
     const handleSetDefault = async () => {
         if (!activeProfile) return;
-        const result = await setAsDefaultTemplate(activeProfile);
+        const result = await setAsDefault(activeProfile);
         if (result.success) {
             showNotification('success', `Set as default for ${activeProfile.type.replace(/_/g, ' ')}`);
         } else {
@@ -376,17 +377,50 @@ const App: React.FC = () => {
                     />
                     <input type="file" ref={fileInputRef} className="hidden" accept=".html,.json" onChange={handleFileChange} />
 
-                    <LocalStorageSection
-                        profile={activeProfile}
-                        isDarkMode={isDarkMode}
-                        isSaving={isSaving}
-                        hasUnsavedChanges={hasUnsavedChanges(activeProfile.id)}
-                        onSave={() => saveProfile(activeProfile)}
-                        onIgnoreChanges={() => ignoreChanges(activeProfile.id)}
-                        onSaveCopy={() => saveCopy(activeProfile)}
-                        onSetDefault={handleSetDefault}
-                        onOpenFolder={openSavedFolder}
-                    />
+                    {/* LocalStorageSection removed as it relies on local file server */}
+
+                    {/* Save Controls */}
+                    <div className={`p-4 rounded-lg border ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5'}`}>
+                        <h3 className="text-xs font-bold uppercase tracking-wider mb-3 opacity-50">Save Changes</h3>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => saveProfile(activeProfile)}
+                                disabled={!hasUnsavedChanges(activeProfile.id) || isSaving}
+                                className={`px-3 py-1.5 text-xs rounded border transition-all ${hasUnsavedChanges(activeProfile.id)
+                                        ? (isDarkMode ? 'bg-white text-black border-white hover:bg-white/90' : 'bg-black text-white border-black hover:bg-black/90')
+                                        : 'opacity-50 cursor-not-allowed border-transparent'
+                                    }`}
+                            >
+                                {isSaving ? 'Saving...' : 'Save Changes'}
+                            </button>
+                            <button
+                                onClick={() => saveCopy(activeProfile)}
+                                disabled={isSaving}
+                                className={`px-3 py-1.5 text-xs rounded border transition-colors ${isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10'
+                                    }`}
+                            >
+                                Save as Copy
+                            </button>
+                            <button
+                                onClick={handleSetDefault}
+                                disabled={isSaving}
+                                className={`px-3 py-1.5 text-xs rounded border transition-colors ${activeProfile.is_default
+                                        ? (isDarkMode ? 'bg-green-500/20 border-green-500/50 text-green-400' : 'bg-green-500/10 border-green-500/50 text-green-600')
+                                        : (isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10')
+                                    }`}
+                            >
+                                {activeProfile.is_default ? 'Default Profile' : 'Set as Default'}
+                            </button>
+                            {hasUnsavedChanges(activeProfile.id) && (
+                                <button
+                                    onClick={() => ignoreChanges(activeProfile.id)}
+                                    className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 transition-colors ml-auto"
+                                >
+                                    Revert
+                                </button>
+                            )}
+                        </div>
+                    </div>
 
                     <ProfileManager
                         profiles={profiles}

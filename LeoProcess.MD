@@ -22,3 +22,4 @@
 18. I dont want to wait too long How can we deploy this to vercel now?
 19. Start every profile with the default examples we had.
 20. Also add "delete profile" and "logout" options
+21. I mean delete the user profile yy@filemap.info for example. Just have a ... next to the logout for this options.

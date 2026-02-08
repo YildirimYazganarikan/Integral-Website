@@ -20,14 +20,85 @@ const DEFAULT_SETTINGS: VisualizerSettings = {
 // Default starter profiles for new users
 const getStarterProfiles = (): Omit<VisualizerProfile, 'id'>[] => [
     {
-        name: 'Particle Circle',
-        type: 'PARTICLE_CIRCLE',
-        settings: { ...DEFAULT_SETTINGS }
+        name: 'Core Pulse',
+        type: 'SIMPLE_CIRCLE',
+        settings: {
+            radius: 20,
+            radiusSensitivity: 1.2,
+            displacementSensitivity: 0.5,
+            sizeSensitivity: 1,
+            density: 0,
+            thickness: 2,
+            breathingAmount: 8,
+            breathingFrequency: 1.5,
+            particleFade: 0,
+            noiseScale: 1
+        }
     },
     {
-        name: 'Sphere',
+        name: 'Particle Flow',
+        type: 'PARTICLE_CIRCLE',
+        settings: {
+            radius: 95,
+            radiusSensitivity: 3.3,
+            displacementSensitivity: 2.4,
+            sizeSensitivity: 0,
+            density: 0.1,
+            thickness: 2,
+            breathingAmount: 5,
+            breathingFrequency: 2.1,
+            particleFade: 0,
+            noiseScale: 1
+        }
+    },
+    {
+        name: 'Circular Radius',
+        type: 'CIRCLE_RADIUS',
+        settings: {
+            radius: 29,
+            radiusSensitivity: 0.6,
+            displacementSensitivity: 0.5,
+            sizeSensitivity: 1,
+            density: 0,
+            thickness: 1,
+            breathingAmount: 0,
+            breathingFrequency: 1,
+            particleFade: 0,
+            noiseScale: 1
+        }
+    },
+    {
+        name: 'Orbital Sphere',
         type: 'SPHERICAL_PARTICLE',
-        settings: { ...DEFAULT_SETTINGS, rotationSpeed: 1 }
+        settings: {
+            radius: 20,
+            radiusSensitivity: 0.8,
+            displacementSensitivity: 1.2,
+            sizeSensitivity: 1,
+            density: 0.6,
+            thickness: 1,
+            rotationSpeed: 0.2,
+            breathingAmount: 5,
+            breathingFrequency: 1,
+            particleFade: 0,
+            noiseScale: 1
+        }
+    },
+    {
+        name: 'New Style',
+        type: 'SIMPLE_CIRCLE',
+        settings: {
+            radius: 300,
+            radiusSensitivity: 1,
+            displacementSensitivity: 1,
+            sizeSensitivity: 1,
+            density: 0.5,
+            thickness: 2,
+            breathingAmount: 5,
+            breathingFrequency: 2,
+            particleFade: 0,
+            noiseScale: 1
+        }
     }
 ];
 

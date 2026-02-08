@@ -20,3 +20,4 @@
 16. Now I want to deploy it in vercel
 17. I connected the repo to vercel but havent connected vercel and supabase
 18. I dont want to wait too long How can we deploy this to vercel now?
+19. Start every profile with the default examples we had.

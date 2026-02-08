@@ -4,12 +4,34 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { exec } from 'child_process';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config({ path: '.env.local' });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 3001;
+
+// Supabase Admin Client (for server-side operations)
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+let supabaseAdmin = null;
+
+if (supabaseUrl && supabaseServiceKey && supabaseServiceKey !== 'YOUR_SERVICE_ROLE_KEY_HERE') {
+    supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false
+        }
+    });
+    console.log('✅ Supabase Admin client initialized');
+} else {
+    console.warn('⚠️ Supabase Admin client not configured - user deletion disabled');
+}
 
 // Base paths for saving files
 const BASE_DIR = __dirname;
@@ -242,6 +264,49 @@ app.get('/api/load-profile-order', (req, res) => {
     } catch (error) {
         console.error('Error loading profile order:', error);
         res.json({ order: [] });
+    }
+});
+
+// DELETE USER ACCOUNT (requires auth token)
+app.delete('/api/delete-user', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Missing or invalid authorization header' });
+        }
+
+        if (!supabaseAdmin) {
+            return res.status(503).json({ error: 'User deletion is not configured on this server' });
+        }
+
+        const token = authHeader.split(' ')[1];
+
+        // Verify the token and get the user
+        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+        if (authError || !user) {
+            return res.status(401).json({ error: 'Invalid or expired token' });
+        }
+
+        // Delete all user data first (profiles, settings)
+        await supabaseAdmin.from('visualizer_profiles').delete().eq('user_id', user.id);
+        await supabaseAdmin.from('user_settings').delete().eq('user_id', user.id);
+        await supabaseAdmin.from('user_profiles').delete().eq('id', user.id);
+
+        // Delete the user account
+        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id);
+
+        if (deleteError) {
+            console.error('Error deleting user:', deleteError);
+            return res.status(500).json({ error: 'Failed to delete user account' });
+        }
+
+        console.log(`✅ Deleted user account: ${user.email}`);
+        res.json({ success: true, message: 'Account deleted successfully' });
+
+    } catch (error) {
+        console.error('Error in delete-user endpoint:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 

@@ -23,3 +23,4 @@
 19. Start every profile with the default examples we had.
 20. Also add "delete profile" and "logout" options
 21. I mean delete the user profile yy@filemap.info for example. Just have a ... next to the logout for this options.
+22. Yes of course I want the account to be deleted from the server

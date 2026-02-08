@@ -46,7 +46,7 @@ const App: React.FC = () => {
     } = useProfiles(showNotification);
 
     // Auth state
-    const { user, loading: authLoading, signOut, isConfigured: isSupabaseConfigured } = useAuth();
+    const { user, loading: authLoading, signOut, deleteAccount, isConfigured: isSupabaseConfigured } = useAuth();
     const [authPage, setAuthPage] = useState<'login' | 'signup'>('login');
     const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -346,11 +346,15 @@ const App: React.FC = () => {
                                     {showUserMenu && (
                                         <div className={`absolute right-0 top-full mt-1 py-1 rounded-lg shadow-xl border z-50 min-w-[160px] ${isDarkMode ? 'bg-black border-white/20' : 'bg-white border-black/20'}`}>
                                             <button
-                                                onClick={() => {
+                                                onClick={async () => {
                                                     setShowUserMenu(false);
-                                                    if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-                                                        // Note: Full account deletion requires admin API - for now just sign out
-                                                        signOut();
+                                                    if (confirm('Are you sure you want to delete your account? This will permanently delete all your data and cannot be undone.')) {
+                                                        const { error } = await deleteAccount();
+                                                        if (error) {
+                                                            showNotification(`Failed to delete account: ${error}`, 'error');
+                                                        } else {
+                                                            showNotification('Account deleted successfully', 'success');
+                                                        }
                                                     }
                                                 }}
                                                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"

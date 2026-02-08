@@ -9,6 +9,7 @@ interface AuthContextType {
     signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
     signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
     signOut: () => Promise<void>;
+    deleteAccount: () => Promise<{ error: string | null }>;
     isConfigured: boolean;
 }
 
@@ -71,6 +72,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await supabase.auth.signOut();
     };
 
+    const deleteAccount = async (): Promise<{ error: string | null }> => {
+        if (!supabase || !session) return { error: 'Not authenticated' };
+
+        try {
+            // Call the server-side delete endpoint
+            const response = await fetch('http://localhost:3001/api/delete-user', {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                return { error: data.error || 'Failed to delete account' };
+            }
+
+            // Sign out after successful deletion
+            await supabase.auth.signOut();
+            return { error: null };
+        } catch (err: any) {
+            return { error: err.message || 'Network error' };
+        }
+    };
+
     return (
         <AuthContext.Provider
             value={{
@@ -80,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 signUp,
                 signIn,
                 signOut,
+                deleteAccount,
                 isConfigured: isSupabaseConfigured(),
             }}
         >

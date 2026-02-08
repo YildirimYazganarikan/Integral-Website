@@ -54,10 +54,12 @@ export interface VisualizerSettings {
   // Listening Mode
   listeningTriggerSens?: number; // Spike trigger sensitivity (0.001-0.2)
   listeningIntensity?: number;   // Spike intensity (0.1-2.0)
+  listeningRate?: number;        // Animation rate when listening
 
   // Speaking Mode
   speakingRate?: number;        // Voice oscillation rate (1-30)
   speakingIntensity?: number;   // Voice amplitude (0.1-2.0)
+  speakingSizeBoost?: number;   // Particle size boost when speaking
 
   // Searching Mode
   searchingSpeed?: number;      // Search rotation speed (0.1-5.0)

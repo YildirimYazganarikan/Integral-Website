@@ -61,6 +61,13 @@ const App: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Redirect to Welcome when user logs out or is deleted
+    useEffect(() => {
+        if (!user && !authLoading) {
+            setShowWelcome(true);
+        }
+    }, [user, authLoading]);
+
     // 5-second countdown for preview mode
     useEffect(() => {
         if (previewMode !== null) {
@@ -225,28 +232,13 @@ const App: React.FC = () => {
         );
     }
 
-    // Empty state
+    // Empty state (Should not happen due to useProfiles auto-creation, but strictly handled)
     if (!activeProfile) {
         return (
             <div className={`h-[100dvh] w-full flex items-center justify-center font-mono ${isDarkMode ? 'text-white bg-black' : 'text-black bg-white'}`}>
-                <div className="flex flex-col items-center gap-6 text-center p-8">
-                    <h1 className="text-2xl font-bold tracking-widest">AI INTERFACE STUDIO</h1>
-                    <p className="opacity-70">No profiles found. Create your first visualizer:</p>
-                    <div className="flex gap-4">
-                        {(['PARTICLE_CIRCLE', 'STRAIGHT_LINE', 'SIMPLE_CIRCLE', 'CIRCLE_RADIUS', 'SPHERICAL_PARTICLE'] as ThemeType[]).map(t => (
-                            <button
-                                key={t}
-                                onClick={() => addProfile(t)}
-                                className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-all hover:scale-105 ${isDarkMode ? 'border-white/30 hover:bg-white/10' : 'border-black/30 hover:bg-black/5'}`}
-                            >
-                                {getThemeIcon(t)}
-                                <span className="text-xs">{t.replace(/_/g, ' ')}</span>
-                            </button>
-                        ))}
-                    </div>
-                    <button onClick={() => setIsDarkMode(!isDarkMode)} className="mt-4 opacity-50 hover:opacity-100">
-                        {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-                    </button>
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="animate-spin" size={32} />
+                    <span className="text-sm opacity-70">Initializing default profile...</span>
                 </div>
             </div>
         );
@@ -387,8 +379,8 @@ const App: React.FC = () => {
                                 onClick={() => saveProfile(activeProfile)}
                                 disabled={!hasUnsavedChanges(activeProfile.id) || isSaving}
                                 className={`px-3 py-1.5 text-xs rounded border transition-all ${hasUnsavedChanges(activeProfile.id)
-                                        ? (isDarkMode ? 'bg-white text-black border-white hover:bg-white/90' : 'bg-black text-white border-black hover:bg-black/90')
-                                        : 'opacity-50 cursor-not-allowed border-transparent'
+                                    ? (isDarkMode ? 'bg-white text-black border-white hover:bg-white/90' : 'bg-black text-white border-black hover:bg-black/90')
+                                    : 'opacity-50 cursor-not-allowed border-transparent'
                                     }`}
                             >
                                 {isSaving ? 'Saving...' : 'Save Changes'}
@@ -405,8 +397,8 @@ const App: React.FC = () => {
                                 onClick={handleSetDefault}
                                 disabled={isSaving}
                                 className={`px-3 py-1.5 text-xs rounded border transition-colors ${activeProfile.is_default
-                                        ? (isDarkMode ? 'bg-green-500/20 border-green-500/50 text-green-400' : 'bg-green-500/10 border-green-500/50 text-green-600')
-                                        : (isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10')
+                                    ? (isDarkMode ? 'bg-green-500/20 border-green-500/50 text-green-400' : 'bg-green-500/10 border-green-500/50 text-green-600')
+                                    : (isDarkMode ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/10')
                                     }`}
                             >
                                 {activeProfile.is_default ? 'Default Profile' : 'Set as Default'}

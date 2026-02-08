@@ -30,3 +30,10 @@
 26. Check github, I probably changed the name of the repo
 27. Continue
 28. yes (Push changes)
+29. Push it to vecel
+30. I deleted the previous vercel please start from scratch
+31. Give me my Environment Variables
+32. Does it look nice (uploaded screenshot)
+33. I deployed again, but when I clicked delete user it gave an eror: (uploaded screenshot)
+34. I havent added the SUPABASE_SERVICE_ROLE_KEY=... To vercel shall I add?
+35. Ok now it works however there is an issue... (Auth flow changes)

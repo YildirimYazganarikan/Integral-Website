@@ -65,6 +65,9 @@ const App: React.FC = () => {
     useEffect(() => {
         if (!user && !authLoading) {
             setShowWelcome(true);
+            if (state.isConnected) {
+                disconnect();
+            }
         }
     }, [user, authLoading]);
 
@@ -185,6 +188,12 @@ const App: React.FC = () => {
         );
     }
 
+    // Welcome screen - PRECEDENCE OVER AUTH
+    // This allows the welcome screen to be shown even if not logged in (e.g. after logout)
+    if (showWelcome) {
+        return <WelcomeScreen onEnterStudio={() => setShowWelcome(false)} />;
+    }
+
     // Auth pages (Supabase required, no skip option)
     if (isSupabaseConfigured && !user) {
         if (authPage === 'signup') {
@@ -201,23 +210,6 @@ const App: React.FC = () => {
                 onSwitchToSignup={() => setAuthPage('signup')}
             />
         );
-    }
-
-    // If Supabase not configured, show error
-    if (!isSupabaseConfigured) {
-        return (
-            <div className={`h-[100dvh] w-full flex items-center justify-center font-mono ${isDarkMode ? 'text-white bg-black' : 'text-black bg-white'}`}>
-                <div className="text-center p-8">
-                    <h1 className="text-xl font-bold mb-4">Configuration Required</h1>
-                    <p className="opacity-70">Please configure Supabase credentials in .env.local</p>
-                </div>
-            </div>
-        );
-    }
-
-    // Welcome screen
-    if (showWelcome) {
-        return <WelcomeScreen onEnterStudio={() => setShowWelcome(false)} />;
     }
 
     // Loading state

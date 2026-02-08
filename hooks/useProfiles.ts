@@ -178,25 +178,34 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
 
                     for (let i = 0; i < starters.length; i++) {
                         const starter = starters[i];
-                        const { data: inserted, error: insertError } = await supabase
-                            .from('visualizer_profiles')
-                            .insert({
-                                user_id: user.id,
-                                name: starter.name,
-                                type: starter.type,
-                                settings: starter.settings,
-                                sort_order: i,
-                            })
-                            .select()
-                            .single();
+                        try {
+                            const { data: inserted, error: insertError } = await supabase
+                                .from('visualizer_profiles')
+                                .insert({
+                                    user_id: user.id,
+                                    name: starter.name,
+                                    type: starter.type,
+                                    settings: starter.settings,
+                                    sort_order: i,
+                                })
+                                .select()
+                                .single();
 
-                        if (!insertError && inserted) {
-                            created.push({
-                                id: inserted.id,
-                                name: inserted.name,
-                                type: inserted.type as ThemeType,
-                                settings: inserted.settings as VisualizerSettings,
-                            });
+                            if (insertError) {
+                                console.warn(`Failed to create profile "${starter.name}":`, insertError.message);
+                                continue;
+                            }
+
+                            if (inserted) {
+                                created.push({
+                                    id: inserted.id,
+                                    name: inserted.name,
+                                    type: inserted.type as ThemeType,
+                                    settings: inserted.settings as VisualizerSettings,
+                                });
+                            }
+                        } catch (err: any) {
+                            console.warn(`Error creating profile "${starter.name}":`, err.message);
                         }
                     }
 

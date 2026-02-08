@@ -25,3 +25,7 @@
 21. I mean delete the user profile yy@filemap.info for example. Just have a ... next to the logout for this options.
 22. Yes of course I want the account to be deleted from the server
 23. Can't you do it (referring to setting up the Supabase service role key)
+24. Open app
+25. and redeploy
+26. Check github, I probably changed the name of the repo
+27. Continue

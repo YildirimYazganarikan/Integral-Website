@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { VisualizerProfile, ThemeType, VisualizerSettings } from '../types';
@@ -135,6 +135,9 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
     const [isSaving, setIsSaving] = useState(false);
     const [originalProfiles, setOriginalProfiles] = useState<Record<string, VisualizerProfile>>({});
 
+    // Prevent double-execution in React strict mode
+    const initializingRef = useRef(false);
+
     const activeProfile = profiles.find(p => p.id === activeProfileId) || profiles[0] || null;
 
     // Load profiles from Supabase
@@ -144,6 +147,12 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
                 setIsLoading(false);
                 return;
             }
+
+            // Prevent double-execution in React strict mode
+            if (initializingRef.current) {
+                return;
+            }
+            initializingRef.current = true;
 
             setIsLoading(true);
             try {
@@ -227,6 +236,11 @@ export function useProfiles(showNotification: (type: 'success' | 'error', messag
         };
 
         loadProfiles();
+
+        // Reset ref when user changes (for cleanup/re-mount)
+        return () => {
+            initializingRef.current = false;
+        };
     }, [user, showNotification]);
 
     // Check for unsaved changes

@@ -137,10 +137,10 @@ const SphereAnimation: React.FC<{ isDark: boolean; isSpeaking: boolean; isListen
 
 // Meeting tile data with real images
 const TILES = [
-    { type: 'human', label: 'Jessica', img: '/assets/jessica.png', imgSpeaking: '/assets/jessica_speaking.png', imgSpeaking2: '/assets/jessica_speaking2.png', imgAmazed: '/assets/jessica_amazed.png' },
-    { type: 'human', label: 'Marcus', img: '/assets/marcus.png', imgSpeaking: '/assets/marcus_speaking.png', imgSpeaking2: '/assets/marcus_speaking2.png', imgAmazed: '/assets/marcus_amazed.png' },
-    { type: 'human', label: 'Elena', img: '/assets/elena.png', imgSpeaking: '/assets/elena_speaking.png', imgSpeaking2: '/assets/elena_speaking2.png', imgAmazed: '/assets/elena_amazed.png' },
-    { type: 'ai', label: 'Norah AI', img: '', imgSpeaking: '', imgSpeaking2: '', imgAmazed: '' },
+    { type: 'human', label: 'Jessica', img: '/assets/jessica.png', imgSpeaking: '/assets/jessica_speaking.png', imgSpeaking2: '/assets/jessica_speaking2.png', imgAmazed: '/assets/jessica_amazed.png', imgAmazed2: '/assets/jessica_amazed2.png' },
+    { type: 'human', label: 'Marcus', img: '/assets/marcus.png', imgSpeaking: '/assets/marcus_speaking.png', imgSpeaking2: '/assets/marcus_speaking2.png', imgAmazed: '/assets/marcus_amazed.png', imgAmazed2: '/assets/marcus_amazed2.png' },
+    { type: 'human', label: 'Elena', img: '/assets/elena.png', imgSpeaking: '/assets/elena_speaking.png', imgSpeaking2: '/assets/elena_speaking2.png', imgAmazed: '/assets/elena_amazed.png', imgAmazed2: '/assets/elena_amazed2.png' },
+    { type: 'ai', label: 'Norah AI', img: '', imgSpeaking: '', imgSpeaking2: '', imgAmazed: '', imgAmazed2: '' },
 ];
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onAbout, isDarkMode, onToggleTheme }) => {
@@ -150,7 +150,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
 
     const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
     const [frame, setFrame] = React.useState(0);
-    const [isAmazed, setIsAmazed] = React.useState(false);
+    const [amazedLevel, setAmazedLevel] = React.useState(0); // 0: none, 1: amazed, 2: very amazed
 
     // Animation loop for speaking frames
     useEffect(() => {
@@ -160,34 +160,36 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
         return () => clearInterval(interval);
     }, []);
 
-    // Logic for amazed state (hover AI for 2 seconds)
+    // Logic for amazed state (hover AI for 2 seconds -> level 1, then +1.5s -> level 2)
     useEffect(() => {
-        let timer: ReturnType<typeof setTimeout>;
+        let timer1: ReturnType<typeof setTimeout>;
+        let timer2: ReturnType<typeof setTimeout>;
+
         if (hoveredIndex === 3) { // 3 is Norah AI
-            timer = setTimeout(() => {
-                setIsAmazed(true);
-            }, 2000); // 2 seconds to trigger amazed
+            timer1 = setTimeout(() => {
+                setAmazedLevel(1);
+                // Start timer for level 2
+                timer2 = setTimeout(() => {
+                    setAmazedLevel(2);
+                }, 1500);
+            }, 2000);
         } else {
-            setIsAmazed(false);
+            setAmazedLevel(0);
         }
-        return () => clearTimeout(timer);
+
+        return () => {
+            clearTimeout(timer1);
+            clearTimeout(timer2);
+        };
     }, [hoveredIndex]);
 
     // Preload speaking and amazed images
     useEffect(() => {
         TILES.forEach(tile => {
-            if (tile.imgSpeaking) {
-                const img = new Image();
-                img.src = tile.imgSpeaking;
-            }
-            if (tile.imgSpeaking2) {
-                const img = new Image();
-                img.src = tile.imgSpeaking2;
-            }
-            if (tile.imgAmazed) {
-                const img = new Image();
-                img.src = tile.imgAmazed;
-            }
+            if (tile.imgSpeaking) new Image().src = tile.imgSpeaking;
+            if (tile.imgSpeaking2) new Image().src = tile.imgSpeaking2;
+            if (tile.imgAmazed) new Image().src = tile.imgAmazed;
+            if (tile.imgAmazed2) new Image().src = tile.imgAmazed2;
         });
     }, []);
 
@@ -290,11 +292,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                                     }} />
                                     <img
                                         src={
-                                            isAmazed && tile.imgAmazed
-                                                ? tile.imgAmazed
-                                                : (isHovered && tile.imgSpeaking && tile.imgSpeaking2)
-                                                    ? (frame === 0 ? tile.imgSpeaking : tile.imgSpeaking2)
-                                                    : tile.img
+                                            amazedLevel === 2 && tile.imgAmazed2
+                                                ? tile.imgAmazed2
+                                                : (amazedLevel >= 1 && tile.imgAmazed
+                                                    ? tile.imgAmazed
+                                                    : (isHovered && tile.imgSpeaking && tile.imgSpeaking2)
+                                                        ? (frame === 0 ? tile.imgSpeaking : tile.imgSpeaking2)
+                                                        : tile.img)
                                         }
                                         alt={tile.label}
                                         style={{

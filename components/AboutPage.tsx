@@ -56,13 +56,11 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
 
     const slideStyle: React.CSSProperties = {
         minHeight: '100vh',
-        height: '100vh',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '80px 24px',
-        scrollSnapAlign: 'start',
         position: 'relative',
     };
 
@@ -97,10 +95,8 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
             backgroundColor: bgColor,
             color: textColor,
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-            overflowY: 'scroll',
+            overflowY: 'auto',
             overflowX: 'hidden',
-            scrollSnapType: 'y proximity',
-            scrollBehavior: 'smooth',
             transition: 'background-color 0.4s ease, color 0.4s ease',
         }}>
             {/* Navigation - Fixed */}

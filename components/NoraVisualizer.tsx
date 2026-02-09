@@ -595,9 +595,11 @@ function drawSphericalParticle(
     const breathingFrequency = settings.breathingFrequency ?? 0.3;
     const breathingAmplitude = settings.breathingAmplitude ?? 29;
 
-    // Mode: Listening
+    // Mode: Listening - SMOOTHER SETTINGS
     const listeningTriggerSens = settings.listeningTriggerSens ?? 0.078;
     const listeningIntensity = settings.listeningIntensity ?? 0.8;
+    // New setting for internal excitation instead of radius expansion
+    const listeningJitterAmount = 15;
 
     // Mode: Speaking
     const speakingRate = settings.speakingRate ?? 16;
@@ -642,8 +644,12 @@ function drawSphericalParticle(
 
     if (mode === AgentMode.LISTENING) {
         // Spike based on audio + random trigger for simulation
-        if (intensity > 0.1 || Math.random() < listeningTriggerSens) {
-            targetIntensity = Math.max(intensity, Math.random() * listeningIntensity);
+        // SMOOTHING: Use a running average or clamp rapid changes if possible, 
+        // but here we just reduce the impact on radius later.
+        if (intensity > 0.05) {
+            targetIntensity = Math.min(1.0, intensity * listeningIntensity * 1.5);
+        } else {
+            targetIntensity = intensity * 0.5; // Quieter noise floor
         }
     } else if (mode === AgentMode.SPEAKING) {
         // Oscillating intensity based on speaking rate
@@ -667,7 +673,16 @@ function drawSphericalParticle(
 
     // === BREATHING ANIMATION ===
     const breathe = Math.sin(time * breathingFrequency) * breathingAmplitude;
-    const currentRadius = baseRadius + (targetIntensity * 40) + breathe;
+
+    // SMOOTHING FIX: 
+    // In LISTENING mode, do NOT expand the radius with intensity.
+    // Instead, keep the radius stable (breathing only) and use intensity for internal energy (jitter/size).
+    let radiusExpansion = 0;
+    if (mode !== AgentMode.LISTENING) {
+        radiusExpansion = targetIntensity * 40;
+    }
+
+    const currentRadius = baseRadius + radiusExpansion + breathe;
 
     // === DRAW MAIN PARTICLES ===
     particles.forEach(p => {
@@ -677,9 +692,17 @@ function drawSphericalParticle(
         const squidPulse = Math.sin(time * squidSpeed + p.fadePhase);
 
         // Jitter based on mode
-        let jitter = targetIntensity * 10;
+        let jitter = 0;
+
         if (mode === AgentMode.SEARCHING) {
             jitter = searchingJitter;
+        } else if (mode === AgentMode.LISTENING) {
+            // ENERGY RESPONSE: High intensity -> High jitter
+            // This replaces the radius expansion with "internal vibration"
+            jitter = targetIntensity * listeningJitterAmount * 3;
+        } else {
+            // Standard idle jitter
+            jitter = targetIntensity * 5;
         }
 
         const r = currentRadius + (p.displacementMultiplier * jitter);
@@ -703,11 +726,24 @@ function drawSphericalParticle(
         // Squid size pulsing
         const pulseScale = 1 + (squidPulse * squidAmplitude * 0.5);
         let size = (p.sizeMultiplier * baseSize * scale) * pulseScale;
-        size += targetIntensity * 5 * scale;
+
+        // SIZE RESPONSE: Listening intensity increases particle size
+        // This makes the sphere "glow" or "thicken" when user speaks
+        if (mode === AgentMode.LISTENING) {
+            size += targetIntensity * 12 * scale;
+        } else {
+            size += targetIntensity * 5 * scale;
+        }
 
         // Squid opacity pulsing
         let alpha = baseOpacity * scale;
         alpha *= (1 + squidPulse * squidOpacityVar);
+
+        // OPACITY RESPONSE: Brighten slightly when listening
+        if (mode === AgentMode.LISTENING) {
+            alpha += targetIntensity * 0.3;
+        }
+
         alpha = Math.max(0, Math.min(1, alpha));
 
         ctx.beginPath();

@@ -9,7 +9,7 @@ interface WelcomeScreenProps {
 }
 
 // Spherical particle animation for the AI tile
-const SphereAnimation: React.FC<{ isDark: boolean; isSpeaking: boolean }> = ({ isDark, isSpeaking }) => {
+const SphereAnimation: React.FC<{ isDark: boolean; isSpeaking: boolean; isListening: boolean }> = ({ isDark, isSpeaking, isListening }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const animRef = useRef<number>(0);
@@ -56,8 +56,12 @@ const SphereAnimation: React.FC<{ isDark: boolean; isSpeaking: boolean }> = ({ i
             ctx.clearRect(0, 0, w, h);
 
             // Slower base speed, moderate increase when speaking
-            // Was 0.015 base, 0.05 speaking -> Now 0.005 base, 0.02 speaking (3x slower base)
-            timeRef.current += isSpeaking ? 0.02 : 0.005;
+            // Was 0.015 base, 0.05 speaking -> Now 0.005 base, 0.02 speaking, 0.01 listening
+            let speed = 0.005;
+            if (isSpeaking) speed = 0.02;
+            else if (isListening) speed = 0.01;
+
+            timeRef.current += speed;
             const time = timeRef.current;
 
             const dotColor = isDark ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)';
@@ -68,8 +72,12 @@ const SphereAnimation: React.FC<{ isDark: boolean; isSpeaking: boolean }> = ({ i
             const baseRadius = Math.min(w, h) * 0.28;
 
             // Slower breathing (frequency was time*2, now time*1)
-            // Amplitude: Base 2, Speaking 6
-            const breathe = Math.sin(time * 1.5) * (isSpeaking ? 6 : 2);
+            // Amplitude: Base 2, Speaking 6, Listening 4
+            let breatheAmp = 2;
+            if (isSpeaking) breatheAmp = 6;
+            else if (isListening) breatheAmp = 4;
+
+            const breathe = Math.sin(time * 1.5) * breatheAmp;
             const currentRadius = baseRadius + breathe;
 
             // Slower rotation
@@ -90,7 +98,12 @@ const SphereAnimation: React.FC<{ isDark: boolean; isSpeaking: boolean }> = ({ i
 
                 // Particle Size Animation (Pulse)
                 // "Squid particle" interpreted as fluid pulsing size
-                const pulse = Math.sin(time * 3 + p.speedOffset) * (isSpeaking ? 1.5 : 0.5);
+                // Pulse intensity: Base 0.5, Speaking 1.5, Listening 2.0 (High pulse requested)
+                let pulseIntensity = 0.5;
+                if (isSpeaking) pulseIntensity = 1.5;
+                else if (isListening) pulseIntensity = 2.0;
+
+                const pulse = Math.sin(time * 3 + p.speedOffset) * pulseIntensity;
                 const size = Math.max(0.1, (p.baseSize + pulse) * scale);
 
                 const alpha = Math.max(0.1, Math.min(1, scale * p.opacity));
@@ -110,7 +123,7 @@ const SphereAnimation: React.FC<{ isDark: boolean; isSpeaking: boolean }> = ({ i
             if (animRef.current) cancelAnimationFrame(animRef.current);
             ro.disconnect();
         };
-    }, [isDark, isSpeaking]);
+    }, [isDark, isSpeaking, isListening]);
 
     return (
         <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -220,6 +233,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                         else if (hoveredIndex !== null) label = 'Norah AI - Listening...';
                     }
 
+                    const isListening = hoveredIndex !== null && !isHovered;
+
                     return (
                         <div
                             key={index}
@@ -244,24 +259,34 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                             }}
                         >
                             {isAi ? (
-                                <SphereAnimation isDark={isDarkMode} isSpeaking={isHovered} />
+                                <SphereAnimation isDark={isDarkMode} isSpeaking={isHovered} isListening={isListening} />
                             ) : (
-                                <img
-                                    src={
-                                        (isHovered && tile.imgSpeaking && tile.imgSpeaking2)
-                                            ? (frame === 0 ? tile.imgSpeaking : tile.imgSpeaking2)
-                                            : tile.img
-                                    }
-                                    alt={tile.label}
-                                    style={{
-                                        width: '100%',
-                                        height: '100%',
-                                        objectFit: 'cover',
-                                        filter: 'grayscale(1)',
-                                        opacity: 0.9,
-                                        transition: 'filter 0.4s ease',
-                                    }}
-                                />
+                                <>
+                                    <div style={{
+                                        position: 'absolute',
+                                        inset: 0,
+                                        backgroundColor: '#e6e6e6', // TODO: Update this to your desired color
+                                        mixBlendMode: 'multiply',
+                                        pointerEvents: 'none',
+                                        zIndex: 2,
+                                    }} />
+                                    <img
+                                        src={
+                                            (isHovered && tile.imgSpeaking && tile.imgSpeaking2)
+                                                ? (frame === 0 ? tile.imgSpeaking : tile.imgSpeaking2)
+                                                : tile.img
+                                        }
+                                        alt={tile.label}
+                                        style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            objectFit: 'cover',
+                                            filter: 'grayscale(1)',
+                                            opacity: 0.9,
+                                            transition: 'filter 0.4s ease',
+                                        }}
+                                    />
+                                </>
                             )}
 
                             {/* Name label at bottom */}

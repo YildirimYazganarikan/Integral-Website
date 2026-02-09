@@ -137,6 +137,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
                 )}
                 <button
                     onClick={onToggleTheme}
+                    className="desktop-nav"
                     style={{
                         background: 'none',
                         border: `1px solid rgba(${fg}, 0.2)`,
@@ -171,10 +172,10 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
                         INTEGRAL LABS
                     </div>
 
-                    <h1 style={{
+                    <h1 className="desktop-h1" style={{
                         fontSize: 'clamp(26px, 5vw, 48px)',
                         fontWeight: 300,
-                        lineHeight: 1.3,
+                        lineHeight: 1.2,
                         maxWidth: 900,
                         margin: '0 auto 40px',
                         opacity: 0.9,
@@ -182,7 +183,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
                         What if every relationship had a highly conscious mediator, a neutral, deeply aware space-holder?
                     </h1>
 
-                    <p style={{
+                    <p className="desktop-p" style={{
                         fontSize: 18,
                         opacity: 0.6,
                         marginBottom: 60,
@@ -190,8 +191,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
                         We build <span style={{ opacity: 1, fontWeight: 500 }}>multi-party AI systems</span>
                     </p>
 
-                    <div style={{ opacity: 0.3, animation: 'bounce 2s infinite' }}>
-                        <ChevronDown size={28} />
+                    <div style={{ opacity: 0.6, animation: 'bounce 2s infinite', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.7 }}>Scroll to Explore</span>
+                        <ChevronDown size={32} />
                     </div>
                 </div>
             </section>
@@ -228,30 +230,30 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
                     }}>
                         <div style={cardStyle}>
                             <Monitor size={28} style={{ opacity: 0.5, marginBottom: 16 }} />
-                            <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, letterSpacing: '0.1em' }}>
+                            <h3 className="desktop-card-h3" style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, letterSpacing: '0.1em' }}>
                                 ONLINE MEETING ROOMS
                             </h3>
-                            <p style={{ fontSize: 14, lineHeight: 1.7, opacity: 0.65 }}>
+                            <p className="desktop-card-p" style={{ fontSize: 14, lineHeight: 1.7, opacity: 0.65 }}>
                                 Agent brings shared awareness into live digital conversations. She listens across meeting rooms, understands group dynamics in real time, and helps conversations move toward clarity, alignment, and meaningful outcomes.
                             </p>
                         </div>
 
                         <div style={cardStyle}>
                             <MessageCircle size={28} style={{ opacity: 0.5, marginBottom: 16 }} />
-                            <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, letterSpacing: '0.1em' }}>
+                            <h3 className="desktop-card-h3" style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, letterSpacing: '0.1em' }}>
                                 TWO PEOPLE INTERACTION
                             </h3>
-                            <p style={{ fontSize: 14, lineHeight: 1.7, opacity: 0.65 }}>
+                            <p className="desktop-card-p" style={{ fontSize: 14, lineHeight: 1.7, opacity: 0.65 }}>
                                 Agent supports one-to-one conversations with presence and timing. By sensing rhythm, emotion, and intent, she helps dialogue unfold naturally and strengthens mutual understanding.
                             </p>
                         </div>
 
                         <div style={cardStyle}>
                             <MapPin size={28} style={{ opacity: 0.5, marginBottom: 16 }} />
-                            <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, letterSpacing: '0.1em' }}>
+                            <h3 className="desktop-card-h3" style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, letterSpacing: '0.1em' }}>
                                 IN-PERSON ENVIRONMENT
                             </h3>
-                            <p style={{ fontSize: 14, lineHeight: 1.7, opacity: 0.65 }}>
+                            <p className="desktop-card-p" style={{ fontSize: 14, lineHeight: 1.7, opacity: 0.65 }}>
                                 Agent extends into physical spaces as an ambient intelligence. She accompanies groups as a quiet facilitator, supporting connection, reflection, and collective decision-making.
                             </p>
                         </div>
@@ -285,7 +287,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
                         <Mic size={32} style={{ opacity: 0.6 }} />
                     </div>
 
-                    <h2 style={{
+                    <h2 className="desktop-h1" style={{
                         fontSize: 26,
                         fontWeight: 400,
                         marginBottom: 24,
@@ -294,7 +296,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
                         Multi-Party Aware AI
                     </h2>
 
-                    <p style={{
+                    <p className="desktop-p" style={{
                         fontSize: 16,
                         lineHeight: 1.8,
                         opacity: 0.7,
@@ -365,7 +367,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
                                     justifyContent: 'space-between',
                                     alignItems: 'flex-start',
                                 }}>
-                                    <h3 style={{
+                                    <h3 className="desktop-card-h3" style={{
                                         fontSize: 15,
                                         fontWeight: 600,
                                         marginBottom: 14,
@@ -501,7 +503,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
                                 }}>
                                     {String(index + 1).padStart(2, '0')}
                                 </span>
-                                <p style={{
+                                <p className="desktop-p" style={{
                                     fontSize: 16,
                                     lineHeight: 1.7,
                                     opacity: 0.8,
@@ -571,6 +573,14 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
                 ::-webkit-scrollbar {
                     width: 0px;
                     background: transparent;
+                }
+                /* Desktop Font Adjustments */
+                @media (min-width: 1024px) {
+                    .desktop-h1 { font-size: 64px !important; max-width: 1200px !important; }
+                    .desktop-p { font-size: 24px !important; }
+                    .desktop-card-h3 { font-size: 18px !important; }
+                    .desktop-card-p { font-size: 16px !important; line-height: 1.8 !important; }
+                    .desktop-nav { font-size: 14px !important; padding: 24px 40px !important; }
                 }
             `}</style>
         </div>

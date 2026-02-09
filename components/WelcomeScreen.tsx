@@ -110,10 +110,10 @@ const SphereAnimation: React.FC<{ isDark: boolean }> = ({ isDark }) => {
 
 // Meeting tile data with real images
 const TILES = [
-    { type: 'human', label: 'Jessica', img: '/assets/jessica.png' },
-    { type: 'human', label: 'Marcus', img: '/assets/marcus.png' },
-    { type: 'human', label: 'Elena', img: '/assets/elena.png' },
-    { type: 'ai', label: 'Norah AI', img: '' },
+    { type: 'human', label: 'Jessica', img: '/assets/jessica.png', imgSpeaking: '/assets/jessica_speaking.png' },
+    { type: 'human', label: 'Marcus', img: '/assets/marcus.png', imgSpeaking: '/assets/marcus_speaking.png' },
+    { type: 'human', label: 'Elena', img: '/assets/elena.png', imgSpeaking: '/assets/elena_speaking.png' },
+    { type: 'ai', label: 'Norah AI', img: '', imgSpeaking: '' },
 ];
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onAbout, isDarkMode, onToggleTheme }) => {
@@ -207,7 +207,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                                 <SphereAnimation isDark={isDarkMode} />
                             ) : (
                                 <img
-                                    src={tile.img}
+                                    src={(isHovered && tile.imgSpeaking) ? tile.imgSpeaking : tile.img}
                                     alt={tile.label}
                                     style={{
                                         width: '100%',
@@ -229,10 +229,12 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                                 letterSpacing: '0.05em',
                                 opacity: isAi ? 0.8 : 0.6,
                                 whiteSpace: 'nowrap',
-                                color: textColor,
-                                textShadow: isDarkMode ? '0 1px 2px rgba(0,0,0,0.8)' : '0 1px 2px rgba(255,255,255,0.8)',
+                                color: isAi ? textColor : '#000',
+                                textShadow: isAi
+                                    ? (isDarkMode ? '0 1px 2px rgba(0,0,0,0.8)' : '0 1px 2px rgba(255,255,255,0.8)')
+                                    : '0 1px 2px rgba(255,255,255,0.8)',
                                 zIndex: 10,
-                                fontWeight: isAi && hoveredIndex !== null ? 600 : 400,
+                                fontWeight: (isAi && hoveredIndex !== null) || !isAi ? 600 : 400,
                             }}>
                                 {label}
                             </div>

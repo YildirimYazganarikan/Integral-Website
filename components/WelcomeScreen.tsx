@@ -325,7 +325,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                     margin: 0,
                     marginBottom: 12,
                 }}>
-                    Integral Labs
+                    AI Agent for Team Meetings
                 </h1>
                 <p style={{
                     fontSize: 12,
@@ -333,7 +333,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                     letterSpacing: '0.15em',
                     margin: 0,
                 }}>
-                    AI Agent for Team Meetings
+                    Integral Labs
                 </p>
             </div>
 

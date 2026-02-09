@@ -18,6 +18,7 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { AboutPage } from './components/AboutPage';
 import { LoginPage } from './components/auth/LoginPage';
 import { SignupPage } from './components/auth/SignupPage';
+import EmailCollectionPage from './components/EmailCollectionPage';
 import { AgentMode, ThemeType } from './types';
 import { Loader2, X, Circle, Activity, Aperture, Disc, Globe, Sun, Moon, LogOut, User, Trash2, MoreVertical } from 'lucide-react';
 
@@ -55,6 +56,7 @@ const App: React.FC = () => {
     // Local UI state
     const [showWelcome, setShowWelcome] = useState(true);
     const [showAbout, setShowAbout] = useState(false);
+    const [showEmailCollection, setShowEmailCollection] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [previewMode, setPreviewMode] = useState<AgentMode | null>(null);
@@ -196,16 +198,29 @@ const App: React.FC = () => {
         return <WelcomeScreen
             onEnterStudio={() => {
                 setShowWelcome(false);
-                const particleProfile = profiles.find(p => p.type === 'SPHERICAL_PARTICLE');
-                if (particleProfile) {
-                    setActiveProfileId(particleProfile.id);
-                }
+                setShowEmailCollection(true);
             }}
             onAbout={() => { setShowWelcome(false); setShowAbout(true); }}
             isDarkMode={isDarkMode}
             onToggleTheme={() => setIsDarkMode(!isDarkMode)}
         />;
     }
+
+    // Email collection page - Gated entry
+    if (showEmailCollection) {
+        return <EmailCollectionPage
+            isDarkMode={isDarkMode}
+            onComplete={() => {
+                setShowEmailCollection(false);
+                // Proceed to enter studio
+                const particleProfile = profiles.find(p => p.type === 'SPHERICAL_PARTICLE');
+                if (particleProfile) {
+                    setActiveProfileId(particleProfile.id);
+                }
+            }}
+        />;
+    }
+
 
     // About page
     if (showAbout) {

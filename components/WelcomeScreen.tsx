@@ -388,7 +388,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                         e.currentTarget.style.borderColor = `rgba(${fg}, 0.3)`;
                     }}
                 >
-                    Start a Session
+                    Try Nora
                 </button>
                 {onAbout && (
                     <button

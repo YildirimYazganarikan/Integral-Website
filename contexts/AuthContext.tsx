@@ -1,6 +1,29 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import React, { createContext, useContext, useState } from 'react';
+
+// Mock types since we aren't using Supabase
+export interface User {
+    id: string;
+    email?: string;
+    app_metadata: Record<string, any>;
+    user_metadata: Record<string, any>;
+    aud: string;
+    created_at: string;
+    phone?: string;
+    confirmed_at?: string;
+    last_sign_in_at?: string;
+    role?: string;
+    updated_at?: string;
+    identities?: any[];
+}
+
+export interface Session {
+    user: User;
+    access_token: string;
+}
+
+export interface AuthError {
+    message: string;
+}
 
 interface AuthContextType {
     user: User | null;
@@ -15,88 +38,43 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Mock user for local mode
+const MOCK_USER: User = {
+    id: 'guest',
+    app_metadata: {},
+    user_metadata: {},
+    aud: 'authenticated',
+    created_at: new Date().toISOString(),
+    email: 'guest@localhost',
+    phone: '',
+    confirmed_at: new Date().toISOString(),
+    last_sign_in_at: new Date().toISOString(),
+    role: 'authenticated',
+    updated_at: new Date().toISOString(),
+    identities: []
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
-    const [session, setSession] = useState<Session | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (!supabase) {
-            setLoading(false);
-            return;
-        }
-
-        // Get initial session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            setLoading(false);
-        });
-
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (_event, session) => {
-                setSession(session);
-                setUser(session?.user ?? null);
-            }
-        );
-
-        return () => subscription.unsubscribe();
-    }, []);
+    // Always authenticated as guest
+    const [user] = useState<User | null>(MOCK_USER);
+    const [session] = useState<Session | null>(null);
+    const [loading] = useState(false);
 
     const signUp = async (email: string, password: string) => {
-        if (!supabase) return { error: { message: 'Supabase not configured' } as AuthError };
-
-        const { error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                emailRedirectTo: window.location.origin,
-            },
-        });
-        return { error };
+        return { error: null };
     };
 
     const signIn = async (email: string, password: string) => {
-        if (!supabase) return { error: { message: 'Supabase not configured' } as AuthError };
-
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
-        return { error };
+        return { error: null };
     };
 
     const signOut = async () => {
-        if (!supabase) return;
-        await supabase.auth.signOut();
+        // No-op for guest
+        return;
     };
 
     const deleteAccount = async (): Promise<{ error: string | null }> => {
-        if (!supabase || !session) return { error: 'Not authenticated' };
-
-        try {
-            // Call the server-side delete endpoint (works for both local proxy and Vercel)
-            const response = await fetch('/api/delete-user', {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                return { error: data.error || 'Failed to delete account' };
-            }
-
-            // Sign out after successful deletion
-            await supabase.auth.signOut();
-            return { error: null };
-        } catch (err: any) {
-            return { error: err.message || 'Network error' };
-        }
+        return { error: 'Cannot delete guest account' };
     };
 
     return (
@@ -109,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 signIn,
                 signOut,
                 deleteAccount,
-                isConfigured: isSupabaseConfigured(),
+                isConfigured: false, // Supabase is not configured
             }}
         >
             {children}

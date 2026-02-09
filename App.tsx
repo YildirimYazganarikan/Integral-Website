@@ -193,7 +193,18 @@ const App: React.FC = () => {
     // Welcome screen - PRECEDENCE OVER AUTH
     // This allows the welcome screen to be shown even if not logged in (e.g. after logout)
     if (showWelcome) {
-        return <WelcomeScreen onEnterStudio={() => setShowWelcome(false)} onAbout={() => { setShowWelcome(false); setShowAbout(true); }} isDarkMode={isDarkMode} onToggleTheme={() => setIsDarkMode(!isDarkMode)} />;
+        return <WelcomeScreen
+            onEnterStudio={() => {
+                setShowWelcome(false);
+                const particleProfile = profiles.find(p => p.type === 'SPHERICAL_PARTICLE');
+                if (particleProfile) {
+                    setActiveProfileId(particleProfile.id);
+                }
+            }}
+            onAbout={() => { setShowWelcome(false); setShowAbout(true); }}
+            isDarkMode={isDarkMode}
+            onToggleTheme={() => setIsDarkMode(!isDarkMode)}
+        />;
     }
 
     // About page

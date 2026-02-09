@@ -49,3 +49,8 @@
 45. Success. No rows returned (SQL fix executed)
 46. Just received an email: tya@leowebsite.com is attempting to deploy... but my email is yy@filemap.info
 47. Push to git
+48. Can I open an app from localhost? (Failed - Script execution policy)
+49. I want to change how one profile particle sphere profile... editing how it proceses audio and animates... How to do that without messing anything?
+50. Currently when its in the listening mode its radius changes very very frequently... I want to fix that... find another way to graphically represent the vocal changes
+51. Open it localhost please
+52. Yes its definately better, lets push to git, DO we need to do anything for vercel?

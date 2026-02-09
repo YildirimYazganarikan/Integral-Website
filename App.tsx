@@ -210,6 +210,10 @@ const App: React.FC = () => {
     if (showEmailCollection) {
         return <EmailCollectionPage
             isDarkMode={isDarkMode}
+            onBack={() => {
+                setShowEmailCollection(false);
+                setShowWelcome(true);
+            }}
             onComplete={() => {
                 setShowEmailCollection(false);
                 // Proceed to enter studio
@@ -222,9 +226,16 @@ const App: React.FC = () => {
     }
 
 
-    // About page
     if (showAbout) {
-        return <AboutPage onBack={() => { setShowAbout(false); setShowWelcome(true); }} isDarkMode={isDarkMode} onToggleTheme={() => setIsDarkMode(!isDarkMode)} />;
+        return <AboutPage
+            onBack={() => { setShowAbout(false); setShowWelcome(true); }}
+            isDarkMode={isDarkMode}
+            onToggleTheme={() => setIsDarkMode(!isDarkMode)}
+            onTryNora={() => {
+                setShowAbout(false);
+                setShowEmailCollection(true);
+            }}
+        />;
     }
 
     // Auth pages (Supabase required, no skip option)

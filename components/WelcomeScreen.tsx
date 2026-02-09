@@ -238,8 +238,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                 gridTemplateColumns: '1fr 1fr',
                 gridTemplateRows: '1fr 1fr',
                 gap: 6,
-                width: 420,
-                height: 320,
+                width: 'min(420px, 90vw)',
+                aspectRatio: '420/320',
+                margin: '0 auto',
                 marginBottom: 48,
             }}>
                 {TILES.map((tile, index) => {
@@ -342,12 +343,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                 marginBottom: 40,
             }}>
                 <h1 style={{
-                    fontSize: 28,
+                    fontSize: 'min(28px, 5.5vw)',
                     fontWeight: 700,
                     letterSpacing: '0.2em',
                     textTransform: 'uppercase',
                     margin: 0,
                     marginBottom: 12,
+                    lineHeight: 1.4,
                 }}>
                     AI Agent for Team Meetings
                 </h1>
@@ -366,7 +368,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                 <button
                     onClick={onEnterStudio}
                     style={{
-                        padding: '14px 40px',
+                        padding: '14px min(40px, 8vw)',
                         fontSize: 12,
                         fontFamily: 'inherit',
                         fontWeight: 500,
@@ -388,13 +390,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                         e.currentTarget.style.borderColor = `rgba(${fg}, 0.3)`;
                     }}
                 >
-                    Try Nora
+                    Try Norah
                 </button>
                 {onAbout && (
                     <button
                         onClick={onAbout}
                         style={{
-                            padding: '14px 40px',
+                            padding: '14px min(40px, 8vw)',
                             fontSize: 12,
                             fontFamily: 'inherit',
                             fontWeight: 500,

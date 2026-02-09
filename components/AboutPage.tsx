@@ -5,6 +5,7 @@ interface AboutPageProps {
     onBack?: () => void;
     isDarkMode: boolean;
     onToggleTheme: () => void;
+    onTryNora?: () => void;
 }
 
 // Team member data
@@ -43,7 +44,7 @@ const INDUSTRIES = [
     },
 ];
 
-export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onToggleTheme }) => {
+export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onToggleTheme, onTryNora }) => {
     const [expandedIndustry, setExpandedIndustry] = useState<number | null>(null);
 
     const fg = isDarkMode ? '255, 255, 255' : '0, 0, 0';
@@ -523,10 +524,8 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
                     }}>
                         Experience Norah
                     </h2>
-                    <a
-                        href="https://app.integrallabs.ai/"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <button
+                        onClick={onTryNora}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -554,9 +553,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
                             e.currentTarget.style.borderColor = `rgba(${fg}, 0.3)`;
                         }}
                     >
-                        Try Integral Labs
+                        TRY NORAH
                         <ArrowRight size={18} />
-                    </a>
+                    </button>
                 </div>
             </section>
 

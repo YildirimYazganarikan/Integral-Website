@@ -270,7 +270,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                                 position: 'relative',
                                 transition: 'transform 0.3s ease, box-shadow 0.3s ease, background-color 0.4s ease',
                                 boxShadow: isHovered ? `0 8px 24px rgba(0,0,0,${isDarkMode ? 0.5 : 0.2})` : 'none',
-                                transform: isHovered ? 'scale(1.02)' : 'scale(1)',
+                                transform: 'scale(1)',
                                 zIndex: isHovered ? 10 : 1,
                                 cursor: 'pointer',
                                 backfaceVisibility: 'hidden', // Improves blurriness on scale

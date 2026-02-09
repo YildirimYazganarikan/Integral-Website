@@ -15,6 +15,7 @@ import { LocalStorageSection } from './components/LocalStorageSection';
 import { ImportExportButtons } from './components/ImportExportButtons';
 import { Notification } from './components/ui/Notification';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { AboutPage } from './components/AboutPage';
 import { LoginPage } from './components/auth/LoginPage';
 import { SignupPage } from './components/auth/SignupPage';
 import { AgentMode, ThemeType } from './types';
@@ -53,6 +54,7 @@ const App: React.FC = () => {
 
     // Local UI state
     const [showWelcome, setShowWelcome] = useState(true);
+    const [showAbout, setShowAbout] = useState(false);
     const [isDarkMode, setIsDarkMode] = useState(true);
     const [showSettings, setShowSettings] = useState(false);
     const [previewMode, setPreviewMode] = useState<AgentMode | null>(null);
@@ -191,7 +193,12 @@ const App: React.FC = () => {
     // Welcome screen - PRECEDENCE OVER AUTH
     // This allows the welcome screen to be shown even if not logged in (e.g. after logout)
     if (showWelcome) {
-        return <WelcomeScreen onEnterStudio={() => setShowWelcome(false)} />;
+        return <WelcomeScreen onEnterStudio={() => setShowWelcome(false)} onAbout={() => { setShowWelcome(false); setShowAbout(true); }} isDarkMode={isDarkMode} onToggleTheme={() => setIsDarkMode(!isDarkMode)} />;
+    }
+
+    // About page
+    if (showAbout) {
+        return <AboutPage onBack={() => { setShowAbout(false); setShowWelcome(true); }} isDarkMode={isDarkMode} onToggleTheme={() => setIsDarkMode(!isDarkMode)} />;
     }
 
     // Auth pages (Supabase required, no skip option)

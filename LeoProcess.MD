@@ -39,3 +39,13 @@
 35. Ok now it works however there is an issue... (Auth flow changes)
 36. (Implemented auth flow changes)
 37. Lets say we want to delete all the profiles of all the users and add these themes... (Theme migration)
+38. I also want new users to see these style profiles when they begin using the pap the first time.
+39. Success. No rows returned (Database truncated)
+40. I am seeing this issue: Vercel - No GitHub account was found matching the commit author email address. My email is yy@filemap.info
+41. When I click the confirmation link from vercel I see a url like this: http://localhost:3000/... Also the page doesnt load
+42. I logged out and it pushed me to the login page... Also the AI audio agent was speaking in the background. (Fixed)
+43. I deleted my profile and refreshed... But later when i click go to studio it showd me the second page (loading profiles) Initializing default profile... it takes too long. I added the f12 page screenshot
+44. Error: Failed to run sql query: ERROR: 42703: column "email" of relation "user_profiles" does not exist
+45. Success. No rows returned (SQL fix executed)
+46. Just received an email: tya@leowebsite.com is attempting to deploy... but my email is yy@filemap.info
+47. Push to git

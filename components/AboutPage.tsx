@@ -99,7 +99,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBack, isDarkMode, onTogg
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
             overflowY: 'scroll',
             overflowX: 'hidden',
-            scrollSnapType: 'y mandatory',
+            scrollSnapType: 'y proximity',
             scrollBehavior: 'smooth',
             transition: 'background-color 0.4s ease, color 0.4s ease',
         }}>

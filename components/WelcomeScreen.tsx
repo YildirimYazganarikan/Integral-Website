@@ -9,7 +9,7 @@ interface WelcomeScreenProps {
 }
 
 // Spherical particle animation for the AI tile
-const SphereAnimation: React.FC<{ isDark: boolean }> = ({ isDark }) => {
+const SphereAnimation: React.FC<{ isDark: boolean; isSpeaking: boolean }> = ({ isDark, isSpeaking }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const animRef = useRef<number>(0);
@@ -35,14 +35,15 @@ const SphereAnimation: React.FC<{ isDark: boolean }> = ({ isDark }) => {
         const ro = new ResizeObserver(resize);
         ro.observe(container);
 
-        const count = 100;
+        const count = 120; // Slightly more particles
         particlesRef.current = [];
         for (let i = 0; i < count; i++) {
             particlesRef.current.push({
-                size: Math.random() * 2.5 + 0.5,
-                opacity: Math.random() * 0.5 + 0.5,
+                baseSize: Math.random() * 2.0 + 0.5,
+                opacity: Math.random() * 0.5 + 0.4,
                 theta: Math.random() * 2 * Math.PI,
                 phi: Math.acos(2 * Math.random() - 1),
+                speedOffset: Math.random() * 10,
             });
         }
 
@@ -54,7 +55,9 @@ const SphereAnimation: React.FC<{ isDark: boolean }> = ({ isDark }) => {
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.clearRect(0, 0, w, h);
 
-            timeRef.current += 0.015;
+            // Slower base speed, moderate increase when speaking
+            // Was 0.015 base, 0.05 speaking -> Now 0.005 base, 0.02 speaking (3x slower base)
+            timeRef.current += isSpeaking ? 0.02 : 0.005;
             const time = timeRef.current;
 
             const dotColor = isDark ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)';
@@ -63,10 +66,15 @@ const SphereAnimation: React.FC<{ isDark: boolean }> = ({ isDark }) => {
             const centerX = w / 2;
             const centerY = h / 2;
             const baseRadius = Math.min(w, h) * 0.28;
-            const breathe = Math.sin(time * 2) * 4;
+
+            // Slower breathing (frequency was time*2, now time*1)
+            // Amplitude: Base 2, Speaking 6
+            const breathe = Math.sin(time * 1.5) * (isSpeaking ? 6 : 2);
             const currentRadius = baseRadius + breathe;
-            const rotX = time * 0.4;
-            const rotY = time * 0.6;
+
+            // Slower rotation
+            const rotX = time * 0.2;
+            const rotY = time * 0.3;
 
             particlesRef.current.forEach((p) => {
                 let x = currentRadius * Math.sin(p.phi) * Math.cos(p.theta);
@@ -79,11 +87,17 @@ const SphereAnimation: React.FC<{ isDark: boolean }> = ({ isDark }) => {
                 const z2 = z1 * Math.cos(rotX) + y * Math.sin(rotX);
 
                 const scale = 200 / (200 + z2);
+
+                // Particle Size Animation (Pulse)
+                // "Squid particle" interpreted as fluid pulsing size
+                const pulse = Math.sin(time * 3 + p.speedOffset) * (isSpeaking ? 1.5 : 0.5);
+                const size = Math.max(0.1, (p.baseSize + pulse) * scale);
+
                 const alpha = Math.max(0.1, Math.min(1, scale * p.opacity));
 
                 ctx.globalAlpha = alpha;
                 ctx.beginPath();
-                ctx.arc(centerX + x1 * scale, centerY + y2 * scale, Math.max(0.5, p.size * scale), 0, Math.PI * 2);
+                ctx.arc(centerX + x1 * scale, centerY + y2 * scale, size, 0, Math.PI * 2);
                 ctx.fill();
             });
             ctx.globalAlpha = 1;
@@ -96,7 +110,7 @@ const SphereAnimation: React.FC<{ isDark: boolean }> = ({ isDark }) => {
             if (animRef.current) cancelAnimationFrame(animRef.current);
             ro.disconnect();
         };
-    }, [isDark]);
+    }, [isDark, isSpeaking]);
 
     return (
         <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -110,10 +124,10 @@ const SphereAnimation: React.FC<{ isDark: boolean }> = ({ isDark }) => {
 
 // Meeting tile data with real images
 const TILES = [
-    { type: 'human', label: 'Jessica', img: '/assets/jessica.png', imgSpeaking: '/assets/jessica_speaking.png' },
-    { type: 'human', label: 'Marcus', img: '/assets/marcus.png', imgSpeaking: '/assets/marcus_speaking.png' },
-    { type: 'human', label: 'Elena', img: '/assets/elena.png', imgSpeaking: '/assets/elena_speaking.png' },
-    { type: 'ai', label: 'Norah AI', img: '', imgSpeaking: '' },
+    { type: 'human', label: 'Jessica', img: '/assets/jessica.png', imgSpeaking: '/assets/jessica_speaking.png', imgSpeaking2: '/assets/jessica_speaking2.png' },
+    { type: 'human', label: 'Marcus', img: '/assets/marcus.png', imgSpeaking: '/assets/marcus_speaking.png', imgSpeaking2: '/assets/marcus_speaking2.png' },
+    { type: 'human', label: 'Elena', img: '/assets/elena.png', imgSpeaking: '/assets/elena_speaking.png', imgSpeaking2: '/assets/elena_speaking2.png' },
+    { type: 'ai', label: 'Norah AI', img: '', imgSpeaking: '', imgSpeaking2: '' },
 ];
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onAbout, isDarkMode, onToggleTheme }) => {
@@ -122,6 +136,29 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
     const bgColor = isDarkMode ? '#000' : '#f5f5f5';
 
     const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
+    const [frame, setFrame] = React.useState(0);
+
+    // Animation loop for speaking frames
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setFrame(f => (f + 1) % 2);
+        }, 400); // 400ms cycle for speaking animation
+        return () => clearInterval(interval);
+    }, []);
+
+    // Preload speaking images
+    useEffect(() => {
+        TILES.forEach(tile => {
+            if (tile.imgSpeaking) {
+                const img = new Image();
+                img.src = tile.imgSpeaking;
+            }
+            if (tile.imgSpeaking2) {
+                const img = new Image();
+                img.src = tile.imgSpeaking2;
+            }
+        });
+    }, []);
 
     return (
         <div style={{
@@ -196,18 +233,25 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                                 backgroundColor: isAi ? `rgba(${fg}, 0.03)` : `rgba(${fg}, 0.02)`,
                                 overflow: 'hidden',
                                 position: 'relative',
-                                transition: 'all 0.3s ease',
+                                transition: 'transform 0.3s ease, box-shadow 0.3s ease, background-color 0.4s ease',
                                 boxShadow: isHovered ? `0 8px 24px rgba(0,0,0,${isDarkMode ? 0.5 : 0.2})` : 'none',
                                 transform: isHovered ? 'scale(1.02)' : 'scale(1)',
                                 zIndex: isHovered ? 10 : 1,
                                 cursor: 'pointer',
+                                backfaceVisibility: 'hidden', // Improves blurriness on scale
+                                WebkitFontSmoothing: 'subpixel-antialiased',
+                                willChange: 'transform',
                             }}
                         >
                             {isAi ? (
-                                <SphereAnimation isDark={isDarkMode} />
+                                <SphereAnimation isDark={isDarkMode} isSpeaking={isHovered} />
                             ) : (
                                 <img
-                                    src={(isHovered && tile.imgSpeaking) ? tile.imgSpeaking : tile.img}
+                                    src={
+                                        (isHovered && tile.imgSpeaking && tile.imgSpeaking2)
+                                            ? (frame === 0 ? tile.imgSpeaking : tile.imgSpeaking2)
+                                            : tile.img
+                                    }
                                     alt={tile.label}
                                     style={{
                                         width: '100%',

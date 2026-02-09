@@ -55,7 +55,7 @@ const App: React.FC = () => {
     // Local UI state
     const [showWelcome, setShowWelcome] = useState(true);
     const [showAbout, setShowAbout] = useState(false);
-    const [isDarkMode, setIsDarkMode] = useState(true);
+    const [isDarkMode, setIsDarkMode] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [previewMode, setPreviewMode] = useState<AgentMode | null>(null);
     const [previewCountdown, setPreviewCountdown] = useState<number>(0);

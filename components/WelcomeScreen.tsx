@@ -265,7 +265,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                                 border: isHovered
                                     ? `2px solid ${textColor}`
                                     : (isAi ? `1px solid rgba(${fg}, 0.2)` : `1px solid rgba(${fg}, 0.08)`),
-                                backgroundColor: isAi ? `rgba(${fg}, 0.03)` : `rgba(${fg}, 0.02)`,
+                                backgroundColor: isAi ? (isDarkMode ? `rgba(${fg}, 0.03)` : '#f5f5f5') : `rgba(${fg}, 0.02)`,
                                 overflow: 'hidden',
                                 position: 'relative',
                                 transition: 'transform 0.3s ease, box-shadow 0.3s ease, background-color 0.4s ease',
@@ -285,7 +285,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onEnterStudio, onA
                                     <div style={{
                                         position: 'absolute',
                                         inset: 0,
-                                        backgroundColor: '#e6e6e6', // TODO: Update this to your desired color
+                                        backgroundColor: '#f5f5f5',
                                         mixBlendMode: 'multiply',
                                         pointerEvents: 'none',
                                         zIndex: 2,
